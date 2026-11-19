@@ -414,6 +414,7 @@ export const LocalVmWorkspaceSchema = Schema.Struct({
   environmentId: EnvironmentId,
   alias: Schema.String,
   workspaceRoot: Schema.String,
+  uninstalledProviders: Schema.optionalKey(Schema.Array(Schema.Literals(["codex", "claude"]))),
 });
 export const LocalVmActionSchema = Schema.Struct({
   id: LocalVmLaunchId,

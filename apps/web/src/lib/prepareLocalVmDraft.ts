@@ -150,6 +150,16 @@ export async function prepareLocalVmDraft(input: {
     }
     await waitForProject(projectRef);
     if (!pending()) return null;
+    if (workspace.uninstalledProviders?.length) {
+      const names = workspace.uninstalledProviders.map((p) =>
+        p === "codex" ? "Codex" : "Claude Code",
+      );
+      toastManager.add({
+        type: "warning",
+        title: `Could not install ${names.join(" and ")} in the VM`,
+        description: "Open Settings → Providers for this VM to retry installation.",
+      });
+    }
     const composerChanged = composerDraftContentChanged(
       composerAtSend,
       useComposerDraftStore.getState().getComposerDraft(draftId),

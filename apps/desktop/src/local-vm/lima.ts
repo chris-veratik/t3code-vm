@@ -6,7 +6,13 @@ import * as NodePath from "node:path";
 import * as NodeUtil from "node:util";
 import { EnvironmentId, type LocalVmLaunch, type LocalVmActionSchema } from "@t3tools/contracts";
 import { localVmHome } from "@t3tools/ssh/localVm";
-import { installGuestHostKey, installGuestService, localVmTemplate } from "./template.ts";
+import { installLocalVmProvider, localVmProviders } from "./providers.ts";
+import {
+  installGuestHostKey,
+  installGuestService,
+  installGuestTools,
+  localVmTemplate,
+} from "./template.ts";
 
 const execute = NodeUtil.promisify(NodeChildProcess.execFile);
 type LaunchRecord = LocalVmLaunch & {
@@ -176,6 +182,14 @@ async function startMachine(id: string, signal?: AbortSignal) {
 async function prepare(input: LocalVmLaunch, signal: AbortSignal) {
   const record = await recordLaunch(input);
   const { name, alias, guest } = await startMachine(input.id, signal);
+  await guest(["sh", "-c", installGuestTools]);
+  const installs = await Promise.allSettled(
+    localVmProviders.map((provider) => guest(["sh", "-c", installLocalVmProvider, "sh", provider])),
+  );
+  signal.throwIfAborted();
+  const uninstalledProviders = localVmProviders.filter(
+    (_, i) => installs[i]?.status === "rejected",
+  );
   await guest(["sh", "-c", installGuestService]);
   const home = await guest(["sh", "-c", 'printf %s "$HOME"']);
   const identityFile = NodePath.join(recordDir(input.id), "environment-id");
@@ -244,6 +258,7 @@ rm -f "$HOME/.t3/source.bundle"`,
     alias,
     environmentId,
     workspaceRoot: NodePath.join(workspace, "checkout", record.subdirectory),
+    uninstalledProviders,
   };
 }
 

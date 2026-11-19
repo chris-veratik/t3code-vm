@@ -26,6 +26,7 @@ import { ModelListRow } from "./ModelListRow";
 import { ModelPickerSidebar } from "./ModelPickerSidebar";
 import { useProviderWorkspaceSnapshotRefresh } from "./useProviderWorkspaceSnapshotRefresh";
 import { getProviderStatusMessage, hasProviderSetup } from "./ProviderStatusBanner";
+import { useIsManagedLocalVm } from "../../state/environments";
 import {
   modelPickerLegacySectionKey,
   modelPickerModelKey,
@@ -124,11 +125,12 @@ function shouldIncludeModelPickerOption(input: {
 function shouldOfferModelPickerSetup(
   entry: ProviderInstanceEntry,
   options: ReadonlyArray<ModelEsque>,
+  localVm: boolean,
 ): boolean {
   return (
     entry.enabled &&
     entry.status !== "disabled" &&
-    hasProviderSetup(entry.snapshot) &&
+    hasProviderSetup(entry.snapshot, localVm) &&
     (!isProviderInstancePickerReady(entry) ||
       !entry.installed ||
       entry.snapshot.auth.status === "unauthenticated" ||
@@ -368,6 +370,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   useLayoutEffect(() => registerModelPickerContent(), []);
   const highlightedModelKeyRef = useRef<string | null>(null);
   const { favorites } = useEnvironmentModelPreferences(props.environmentId);
+  const localVm = useIsManagedLocalVm(props.environmentId);
   const activeEntry = props.instanceEntries.find(
     (entry) => entry.instanceId === props.activeInstanceId,
   );
@@ -410,6 +413,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     shouldOfferModelPickerSetup(
       activeEntry,
       modelOptionsByInstance.get(props.activeInstanceId) ?? [],
+      localVm,
     );
   const [selectedInstanceId, setSelectedInstanceId] = useState<ProviderInstanceId | "favorites">(
     () => {
@@ -537,7 +541,11 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     if (canOpenProviderSetup) {
       for (const entry of instanceEntries) {
         if (
-          shouldOfferModelPickerSetup(entry, modelOptionsByInstance.get(entry.instanceId) ?? [])
+          shouldOfferModelPickerSetup(
+            entry,
+            modelOptionsByInstance.get(entry.instanceId) ?? [],
+            localVm,
+          )
         ) {
           instanceIds.add(entry.instanceId);
         }
@@ -722,6 +730,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
             shouldOfferModelPickerSetup(
               entry,
               modelOptionsByInstance.get(entry.instanceId) ?? [],
+              localVm,
             ) &&
             (selectedEntry
               ? entry.instanceId === selectedEntry.instanceId

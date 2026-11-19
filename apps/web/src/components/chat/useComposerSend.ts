@@ -1719,6 +1719,14 @@ export function useComposerSend(input: ComposerSendInput) {
       });
       if (!sendWhenVmProviderReady()) {
         const target = destination;
+        const providers = appAtomRegistry
+          .get(environmentPresentations.providersByEnvironmentAtom)
+          .get(target);
+        const instanceId =
+          providers?.find(
+            (provider) => provider.instanceId === atSend?.selectedModelSelection.instanceId,
+          )?.instanceId ??
+          providers?.find((provider) => provider.driver === atSend?.selectedProvider)?.instanceId;
         toastManager.add({
           type: "info",
           title: "Set up a provider in the local VM",
@@ -1726,7 +1734,10 @@ export function useComposerSend(input: ComposerSendInput) {
           actionProps: {
             children: "Open providers",
             onClick: () => {
-              void navigate({ to: "/settings/providers", search: { environmentId: target } });
+              void navigate({
+                to: "/settings/providers",
+                search: { environmentId: target, ...(instanceId ? { instanceId } : {}) },
+              });
             },
           },
         });

@@ -9,7 +9,7 @@ import type {
   ServerConfig,
   ServerProvider,
 } from "@t3tools/contracts";
-import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import { resolveProviderInstanceDisplayName as agentName } from "@t3tools/client-runtime/state/provider-instance-display";
 import {
   isAtomCommandInterrupted,
@@ -25,7 +25,6 @@ import {
   AuthOrchestrationOperateScope,
   isManagedDriverAllowed,
   ProviderDriverKind,
-  ThreadId,
 } from "@t3tools/contracts";
 import { Link, useBlocker } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
@@ -39,7 +38,6 @@ import {
 } from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
-import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { MOBILE_APP_URL } from "../../branding";
 import { isElectron } from "../../env";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
@@ -80,10 +78,15 @@ import {
   type WelcomeImportSelection,
   welcomeImportSelectionKey,
 } from "../../onboarding/welcomeState";
-import { newProjectId, randomUUID } from "../../lib/utils";
+import { newProjectId } from "../../lib/utils";
 import { agentSessionImport } from "../../state/agentSessions";
 import { readProjects, useProjects, waitForProject } from "../../state/entities";
-import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
+import {
+  isManagedLocalVmEnvironment,
+  readEnvironment,
+  useEnvironments,
+  usePrimaryEnvironmentId,
+} from "../../state/environments";
 import { managedTelemetryOffMessage, useManagedPolicy } from "../../state/managedPolicy";
 import { useProjectScans } from "../../onboarding/useProjectScans";
 import { projectEnvironment } from "../../state/projects";
@@ -93,15 +96,16 @@ import {
   useEnvironmentScope,
   useEnvironmentsWithScope,
 } from "../../state/session";
-import { terminalEnvironment } from "../../state/terminal";
-import { useThreadRunningTerminalIds } from "../../state/terminalSessions";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { getProviderSummary } from "../settings/providerStatus";
 import { AddProviderInstanceDialog } from "../settings/AddProviderInstanceDialog";
 import { useDesktopCliCommand } from "../settings/CliCommandSettingsRow";
 import { CodexSetupSection } from "../settings/CodexSetupSection";
 import { readCodexSetupMode } from "../settings/CodexSetupSection.logic";
-import { TerminalViewport } from "../ThreadTerminalDrawer";
+import {
+  ProviderCliTerminal,
+  type ProviderCliTerminalSession,
+} from "../settings/ProviderCliTerminal";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { ACPRegistryIcon } from "../Icons";
 import { Button } from "../ui/button";
@@ -116,7 +120,6 @@ import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import { cn } from "../../lib/utils";
 import { formatRelativeTime } from "../../timestampFormat";
 
-const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
 const SCAN_LIMIT_MESSAGE = "Scan limit reached. Some projects or conversations may be missing.";
 
 /**
@@ -374,15 +377,6 @@ type OnboardingAgentDriver = (typeof INSTALLABLE_DRIVERS)[number];
 const isInstallableDriver = (driver: string): driver is OnboardingAgentDriver =>
   (INSTALLABLE_DRIVERS as ReadonlyArray<string>).includes(driver);
 
-interface AgentTerminalSession {
-  readonly environmentId: EnvironmentId;
-  readonly driver: OnboardingAgentDriver;
-  readonly providerInstanceId: ServerProvider["instanceId"];
-  readonly cwd: string;
-  readonly command: string;
-  readonly keybindings: ServerConfig["keybindings"];
-}
-
 // Shared by the page (to enable Start) and the agents section, so both agree on what is ready.
 function useWelcomeAgents(environmentId: EnvironmentId) {
   const providers = useAtomValue(serverEnvironment.providersValueAtom(environmentId));
@@ -423,7 +417,7 @@ function AgentsSection({
   const persistProviderInstance = usePersistEnvironmentProviderInstanceMutation(environmentId);
   const canOperateTerminal = useEnvironmentScope(environmentId, AuthTerminalOperateScope);
   const canManageProviders = useEnvironmentScope(environmentId, AuthProvidersManageScope);
-  const [terminalSession, setTerminalSession] = useState<AgentTerminalSession | null>(null);
+  const [terminalSession, setTerminalSession] = useState<ProviderCliTerminalSession | null>(null);
   const [moreOpen, setMoreOpen] = useState<boolean | null>(null);
   const [addingProvider, setAddingProvider] = useState(false);
   const [codexSetupId, setCodexSetupId] = useState<ProviderInstanceId | null>(null);
@@ -483,6 +477,7 @@ function AgentsSection({
             provider,
             serverConfig.settings,
             serverConfig.environment.platform.os,
+            { headless: isManagedLocalVmEnvironment(readEnvironment(environmentId)) },
           )
         : resolveOnboardingProviderInstallCommand(
             provider.driver,
@@ -694,7 +689,7 @@ function AgentsSection({
       ) : null}
       {isPrimary ? <CliPathSetup /> : null}
       {terminalSession !== null ? (
-        <AgentInstallTerminal
+        <ProviderCliTerminal
           key={`${terminalSession.environmentId}:${terminalSession.providerInstanceId}:${terminalSession.driver}`}
           session={terminalSession}
           onCommandFinished={() =>
@@ -1201,185 +1196,6 @@ function AgentRow({
         ) : (
           action
         )}
-      </div>
-    </div>
-  );
-}
-
-function AgentInstallTerminal({
-  session,
-  onCommandFinished,
-  onClose,
-}: {
-  readonly session: AgentTerminalSession;
-  readonly onCommandFinished: () => void;
-  readonly onClose: () => void;
-}) {
-  const { command, cwd, driver, environmentId, keybindings, providerInstanceId } = session;
-  const canOperateTerminal = useEnvironmentScope(environmentId, AuthTerminalOperateScope);
-  const [advancedTypography] = useLocalStorage(
-    TYPOGRAPHY_ADVANCED_STORAGE_KEY,
-    false,
-    Schema.Boolean,
-  );
-  const openTerminal = useAtomCommand(terminalEnvironment.open, { reportFailure: false });
-  const writeTerminal = useAtomCommand(terminalEnvironment.write, { reportFailure: false });
-  const closeTerminal = useAtomCommand(terminalEnvironment.close, { reportFailure: false });
-  const setupQueueRef = useRef(Promise.resolve());
-  const setupGenerationRef = useRef(0);
-  const activeSetupGenerationRef = useRef<number | null>(null);
-  const [terminalId] = useState(() => `onboarding-${driver}-${randomUUID()}`);
-  const threadRef = scopeThreadRef(environmentId, AGENT_ONBOARDING_THREAD_ID);
-  const [setupAttempt, setSetupAttempt] = useState(0);
-  const [setupState, setSetupState] = useState<
-    "preparing" | "ready" | "openFailed" | "writeFailed"
-  >("preparing");
-  const terminalReady = setupState === "ready" || setupState === "writeFailed";
-  const commandRunning = useThreadRunningTerminalIds({
-    environmentId,
-    threadId: AGENT_ONBOARDING_THREAD_ID,
-  }).includes(terminalId);
-  const commandStartedRef = useRef(false);
-  const handleCommandFinished = useEffectEvent(onCommandFinished);
-
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the shell stays open after an install or sign-in, so its command exiting is the only signal to check the agent again
-  useEffect(() => {
-    if (commandRunning) {
-      commandStartedRef.current = true;
-    } else if (commandStartedRef.current) {
-      commandStartedRef.current = false;
-      handleCommandFinished();
-    }
-  }, [commandRunning]);
-
-  // StrictMode can finish a cancelled open after replacement setup; it must not close or pre-type into that
-  // session.
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- opens the setup PTY, types the command into it, and closes it on cleanup
-  useEffect(() => {
-    const generation = setupGenerationRef.current + 1;
-    setupGenerationRef.current = generation;
-    activeSetupGenerationRef.current = generation;
-    // oxlint-disable-next-line react/set-state-in-effect -- A retry or a new command reopens the terminal, which shows as preparing until the open settles.
-    setSetupState("preparing");
-
-    setupQueueRef.current = setupQueueRef.current.then(async () => {
-      if (activeSetupGenerationRef.current !== generation) return;
-      if (!readEnvironmentScope(environmentId, AuthTerminalOperateScope)) {
-        setSetupState("openFailed");
-        return;
-      }
-      const opened = await openTerminal({
-        environmentId,
-        input: {
-          threadId: AGENT_ONBOARDING_THREAD_ID,
-          terminalId,
-          cwd,
-          providerInstanceId,
-        },
-      });
-      if (opened._tag !== "Success") {
-        if (activeSetupGenerationRef.current === generation) setSetupState("openFailed");
-        return;
-      }
-
-      if (activeSetupGenerationRef.current !== generation) return;
-      if (!readEnvironmentScope(environmentId, AuthTerminalOperateScope)) {
-        setSetupState("writeFailed");
-        return;
-      }
-
-      const wrote = await writeTerminal({
-        environmentId,
-        input: { threadId: AGENT_ONBOARDING_THREAD_ID, terminalId, data: command },
-      });
-      if (activeSetupGenerationRef.current !== generation) return;
-      setSetupState(wrote._tag === "Success" ? "ready" : "writeFailed");
-    });
-
-    // Revocation leaves the PTY running; close only while terminal access remains.
-    return () => {
-      if (activeSetupGenerationRef.current === generation) {
-        activeSetupGenerationRef.current = null;
-      }
-      setupQueueRef.current = setupQueueRef.current.then(async () => {
-        if (!readEnvironmentScope(environmentId, AuthTerminalOperateScope)) return;
-        await closeTerminal({
-          environmentId,
-          input: { threadId: AGENT_ONBOARDING_THREAD_ID, terminalId, deleteHistory: true },
-        });
-      });
-    };
-  }, [
-    closeTerminal,
-    command,
-    cwd,
-    environmentId,
-    openTerminal,
-    providerInstanceId,
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Retry bumps setupAttempt to open the terminal again.
-    setupAttempt,
-    terminalId,
-    writeTerminal,
-  ]);
-
-  return (
-    <div
-      data-thread-terminal-drawer
-      className="mt-4 overflow-hidden rounded-lg border border-border/70 bg-background text-foreground"
-    >
-      <div className="flex items-center justify-between border-b border-border/60 bg-background/60 px-3 py-1.5">
-        <span className="text-2xs font-medium text-muted-foreground">
-          {!canOperateTerminal ? (
-            "This connection cannot control terminals."
-          ) : setupState === "writeFailed" ? (
-            <>
-              Run <code className="rounded bg-muted px-1 font-mono">{command}</code> in this
-              terminal.
-            </>
-          ) : setupState === "ready" ? (
-            "Review the command, then press Enter to run it."
-          ) : setupState === "openFailed" ? (
-            "Could not open the setup terminal."
-          ) : (
-            "Preparing command..."
-          )}
-        </span>
-        <div className="flex items-center gap-1">
-          {setupState === "openFailed" ? (
-            <Button
-              size="xs"
-              variant="ghost"
-              disabled={!canOperateTerminal}
-              onClick={() => {
-                if (readEnvironmentScope(environmentId, AuthTerminalOperateScope)) {
-                  setSetupAttempt((value) => value + 1);
-                }
-              }}
-            >
-              Retry
-            </Button>
-          ) : null}
-          <Button size="xs" variant="ghost-muted" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      </div>
-      <div className="h-64">
-        {terminalReady ? (
-          <TerminalViewport
-            threadRef={threadRef}
-            threadId={AGENT_ONBOARDING_THREAD_ID}
-            terminalId={terminalId}
-            terminalLabel={`Install ${driver}`}
-            cwd={cwd}
-            providerInstanceId={providerInstanceId}
-            advancedTypography={advancedTypography}
-            onSessionExited={onClose}
-            autoFocus
-            visible
-            keybindings={keybindings}
-          />
-        ) : null}
       </div>
     </div>
   );

@@ -26,6 +26,23 @@ export interface EnvironmentPresentation extends BaseEnvironmentPresentation {
   readonly relayManaged: boolean;
 }
 
+export function isManagedLocalVmEnvironment(
+  environment: Pick<EnvironmentPresentation, "entry"> | null,
+): boolean {
+  const profile = environment && Option.getOrNull(environment.entry.profile);
+  return (
+    profile?._tag === "SshConnectionProfile" && /^lima-t3-[a-f0-9]{32}$/.test(profile.target.alias)
+  );
+}
+
+export function useIsManagedLocalVm(environmentId: EnvironmentId | null): boolean {
+  return useAtomValue(environmentPresentations.presentationsAtom, (entries) =>
+    isManagedLocalVmEnvironment(
+      environmentId === null ? null : (entries.get(environmentId) ?? null),
+    ),
+  );
+}
+
 function projectEnvironmentPresentation(
   environmentId: EnvironmentId,
   presentation: BaseEnvironmentPresentation,

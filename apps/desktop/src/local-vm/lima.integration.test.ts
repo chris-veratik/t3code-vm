@@ -53,14 +53,22 @@ it.skipIf(process.env.RUN_LIMA_INTEGRATION !== "1")(
           ])
         ).stdout.trimEnd();
       const inProject = (command: string) => ssh(`cd "${workspace.workspaceRoot}" && ${command}`);
+      expect(workspace.uninstalledProviders).toEqual([]);
+      const versions = () =>
+        ssh('"$HOME/.local/bin/codex" --version && "$HOME/.local/bin/claude" --version');
+      const installed = await versions();
+      expect(installed).toMatch(/codex-cli [\d.]+/);
+      expect(installed).toMatch(/[\d.]+ \(Claude Code\)/);
       expect(await inProject("git rev-parse HEAD")).toBe(commit);
       expect(await inProject("cat README.md && test ! -e .env")).toBe("committed");
       expect(await ssh("findmnt -rn -t virtiofs,9p,fuse.sshfs || true")).toBe("");
       await inProject("echo guest-only > guest-file");
+      await ssh('rm "$HOME/.local/bin/codex"');
       await manageLocalVm({ id, action: "stop" });
       expect((await listLocalVms())[0]?.status).toBe("Stopped");
       await manageLocalVm({ id, action: "start" });
       expect(await prepareLocalVm(request)).toEqual(workspace);
+      expect(await versions()).toBe(installed);
       expect(await inProject("cat guest-file")).toBe("guest-only");
       await manageLocalVm({ id, action: "delete" });
       expect(await listLocalVms()).toEqual([]);

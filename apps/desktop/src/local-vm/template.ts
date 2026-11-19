@@ -18,12 +18,15 @@ images:
     digest: "sha256:50e24e1fb79e89116e939d90aa7738f7af48c442fa1bc2510131e0b39c50348e"
 `;
 
+export const installGuestTools = `set -eu
+if ! (command -v git && command -v curl && command -v flock) >/dev/null; then
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get -qy update
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get -qy install git ca-certificates curl util-linux
+fi
+`;
+
 export const installGuestService = `set -eu
 t3="$HOME/.local/bin/t3"
-if ! command -v git >/dev/null; then
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get -qy update
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get -qy install git ca-certificates curl
-fi
 if [ ! -x "$t3" ]; then
   installer=$(mktemp)
   trap 'rm -f "$installer"' EXIT

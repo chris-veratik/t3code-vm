@@ -7,15 +7,21 @@ machine. That machine must stay running and reachable while you work.
 
 On an Apple Silicon Mac with Lima installed (`brew install lima`), open a project in the
 desktop app and choose **New Thread → Run on → New local VM**. Press **Send** to create
-the VM. The first launch downloads Ubuntu and T3 Code. The guest uses two virtual CPUs,
-4 GiB of memory and a 24 GiB virtual disk.
+the VM. The first launch downloads Ubuntu, T3 Code, Codex and Claude Code. The guest
+uses two virtual CPUs, 4 GiB of memory and a 24 GiB virtual disk.
 
 A Git project starts at the selected local commit and keeps its project subdirectory.
 Commit any working changes you want in the VM before sending. A scratch thread starts
 in an empty directory. The checkout and terminal live inside the guest. A project that
-uses submodules or Git LFS needs its usual guest-side setup. Use **Settings → Providers**
-for the VM to install or sign in to the agent you want. Return to the same draft after
-setup to continue the first send.
+uses submodules or Git LFS needs its usual guest-side setup.
+
+To connect your account, open **Settings → Providers**, select the **Local VM** and
+choose **Codex** or **Claude**. Choose **Sign in on VM**, then press **Enter** in
+the VM terminal. Open the link on your Mac and follow the provider’s instructions.
+For Codex, enable device-code login in your ChatGPT security settings if prompted.
+If Claude shows a login code in the browser, paste it into the VM terminal.
+Return to the same draft to continue the first send. Each VM keeps its own sign-in
+across stops and resumes.
 
 Open **Settings → Environments → Local VMs** to stop or resume a machine. Stop ends
 running processes and keeps the checkout, provider settings and chat history on the disk.

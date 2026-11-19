@@ -73,6 +73,24 @@ describe("getOnboardingProviderState", () => {
 });
 
 describe("resolveOnboardingProviderLoginCommand", () => {
+  it("uses device authorization inside a local VM and keeps the instance binary path", () => {
+    expect(
+      resolveOnboardingProviderLoginCommand(
+        readyCodex,
+        {
+          ...DEFAULT_SERVER_SETTINGS,
+          providerInstances: {
+            [readyCodex.instanceId]: {
+              driver: readyCodex.driver,
+              config: { binaryPath: "/home/Dev Tools/codex" },
+            },
+          },
+        },
+        "linux",
+        { headless: true },
+      ),
+    ).toBe("'/home/Dev Tools/codex' login --device-auth");
+  });
   it("uses the selected Codex account binary", () => {
     const provider = { ...readyCodex, instanceId: ProviderInstanceId.make("codex_work") };
 

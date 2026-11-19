@@ -23,6 +23,11 @@ const state = vi.hoisted(() => ({
   providerAuthQuery: null as unknown,
   providerAuth: null as ProviderAuthState | null,
   settings: null as unknown as UnifiedSettings,
+  config: null as unknown as Atom.Writable<unknown>,
+  canOperateTerminal: false,
+  openTerminal: vi.fn(),
+  writeTerminal: vi.fn(),
+  closeTerminal: vi.fn(),
   canManageProviders: true,
   canWriteSettings: true,
   searchTargetId: null as string | null,
@@ -45,7 +50,8 @@ vi.mock(import("../../state/server"), async (original) => {
   const { Atom } = await import("effect/reactivity");
   const providers = Atom.make<ReadonlyArray<ServerProvider>>([]).pipe(Atom.keepAlive);
   state.providers = providers;
-  const config = Atom.make(null);
+  const config = Atom.make<unknown>(null).pipe(Atom.keepAlive);
+  state.config = config;
   const providerAuth = Atom.make(null);
   state.providerAuthQuery = providerAuth;
   const commandLabels = {
@@ -80,7 +86,26 @@ vi.mock(import("../../state/use-atom-command"), async (original) => ({
       update: state.updateProvider,
       uninstall: state.uninstall,
       "accept-url-auth": state.acceptUrlAuth,
+      "open-terminal": state.openTerminal,
+      "write-terminal": state.writeTerminal,
+      "close-terminal": state.closeTerminal,
     })[command.label ?? ""] ?? vi.fn()) as never,
+}));
+vi.mock(import("../../state/terminal"), async (original) => {
+  const actual = await original();
+  return {
+    ...actual,
+    terminalEnvironment: {
+      ...actual.terminalEnvironment,
+      open: { label: "open-terminal" },
+      write: { label: "write-terminal" },
+      close: { label: "close-terminal" },
+    } as never,
+  };
+});
+vi.mock(import("../ThreadTerminalDrawer"), async (original) => ({
+  ...(await original()),
+  TerminalViewport: () => <div />,
 }));
 vi.mock(import("~/localApi"), async (original) => {
   const api = { dialogs: { confirm: state.confirm } };
@@ -123,7 +148,9 @@ vi.mock(import("../../state/session"), async (original) => {
       ? state.canManageProviders
       : requested === "settings:write"
         ? state.canWriteSettings
-        : requested === "orchestration:read");
+        : requested === "terminal:operate"
+          ? state.canOperateTerminal
+          : requested === "orchestration:read");
   return {
     ...(await original()),
     useEnvironmentScope: scope as never,
@@ -206,6 +233,7 @@ const setProviders = (providers: ReadonlyArray<ServerProvider>) =>
   act(async () => appAtomRegistry.set(state.providers, providers));
 
 function panel(options?: {
+  readonly localVm?: boolean;
   readonly readOnly?: boolean;
   readonly targetInstanceId?: ProviderInstanceId;
 }) {
@@ -215,6 +243,7 @@ function panel(options?: {
         <EnvironmentProviderSettings
           environmentId={environmentId}
           environmentLabel="Remote device"
+          localVm={options?.localVm === true}
           {...(options?.readOnly === undefined ? {} : { readOnly: options.readOnly })}
           {...(options?.targetInstanceId === undefined
             ? {}
@@ -230,6 +259,11 @@ function panel(options?: {
 async function setup() {
   await page.viewport(1280, 900);
   state.settings = DEFAULT_UNIFIED_SETTINGS;
+  state.canOperateTerminal = false;
+  appAtomRegistry.set(state.config, null);
+  for (const command of [state.openTerminal, state.writeTerminal, state.closeTerminal]) {
+    command.mockReset().mockResolvedValue(AsyncResult.success(undefined));
+  }
   state.canManageProviders = true;
   state.canWriteSettings = true;
   state.searchTargetId = null;
@@ -250,6 +284,58 @@ async function setup() {
 }
 
 describe("EnvironmentProviderSettings routing", () => {
+  it.each([
+    ["codex", "codex login --device-auth"],
+    ["claudeAgent", "claude auth login"],
+  ] as const)(
+    "runs %s sign-in in the selected VM and provider instance",
+    async (driver, command) => {
+      await setup();
+      state.canOperateTerminal = true;
+      appAtomRegistry.set(state.config, {
+        cwd: "/home/dev",
+        keybindings: [],
+        settings: state.settings,
+        environment: { platform: { os: "linux" }, capabilities: {} },
+      });
+      const instanceId = ProviderInstanceId.make(driver);
+      await setProviders([
+        {
+          ...provider(),
+          driver: ProviderDriverKind.make(driver),
+          instanceId,
+          auth: { status: "unauthenticated" },
+          status: "error",
+        },
+      ]);
+      await using _screen = await render(panel({ localVm: true, targetInstanceId: instanceId }));
+      await userEvent.click(page.getByRole("button", { name: "Sign in on VM" }));
+      await vi.waitFor(() =>
+        expect(state.writeTerminal).toHaveBeenCalledWith({
+          environmentId,
+          input: expect.objectContaining({ data: command }),
+        }),
+      );
+      expect(state.openTerminal).toHaveBeenCalledWith({
+        environmentId,
+        input: expect.objectContaining({ cwd: "/home/dev", providerInstanceId: instanceId }),
+      });
+    },
+  );
+
+  it("keeps guest sign-in unavailable without terminal access", async () => {
+    await setup();
+    appAtomRegistry.set(state.config, {
+      cwd: "/home/dev",
+      keybindings: [],
+      settings: state.settings,
+      environment: { platform: { os: "linux" }, capabilities: {} },
+    });
+    await setProviders([{ ...provider(), auth: { status: "unauthenticated" }, status: "error" }]);
+    await using _screen = await render(panel({ localVm: true, targetInstanceId: codexId }));
+    await expect.element(page.getByRole("button", { name: "Sign in on VM" })).toBeDisabled();
+    expect(state.openTerminal).not.toHaveBeenCalled();
+  });
   it("does not substitute another account when the requested instance was removed", async () => {
     await setup();
     await setProviders([provider()]);
