@@ -1,3 +1,4 @@
+import { usePrimaryEnvironmentId } from "../state/environments";
 import { writeTextToClipboard } from "../hooks/useCopyToClipboard";
 import { formatFilePathForClipboard } from "@t3tools/client-runtime/media-actions";
 import { readLocalApi } from "../localApi";
@@ -132,6 +133,8 @@ function showWorkspaceContextMenu(event: ReactMouseEvent, workspacePath: string)
 }
 
 interface RunContextSelectorProps {
+  localVmSelected: boolean;
+  onLocalVm: (() => void) | undefined;
   displayMode?: "toolbar" | "panel";
   workspaceRoot?: string;
   forceNewWorktree: boolean;
@@ -155,6 +158,8 @@ interface RunContextSelectorProps {
 }
 
 const RunContextSelector = memo(function RunContextSelector({
+  localVmSelected,
+  onLocalVm,
   displayMode = "toolbar",
   workspaceRoot,
   forceNewWorktree,
@@ -238,12 +243,13 @@ const RunContextSelector = memo(function RunContextSelector({
       <TooltipPopup>{autoEnvironmentLabel ?? activeEnvironment?.label ?? "Run on"}</TooltipPopup>
     </Tooltip>
   );
+  const destinationLabel = localVmSelected ? "New local VM" : autoEnvironmentLabel;
   const icon = showEnvironmentIndicator ? environmentIcon : workspaceIcon;
   const triggerContent = (
     <>
       {icon}
       <ComposerContextLabel displayMode={displayMode}>
-        {autoEnvironmentLabel ??
+        {destinationLabel ??
           (showEnvironmentIndicator ? (activeEnvironment?.label ?? "Run on") : workspaceLabel)}
       </ComposerContextLabel>
       {/* Trailing in the panel, so every row label starts on the same edge. */}
@@ -316,11 +322,19 @@ const RunContextSelector = memo(function RunContextSelector({
             <MenuGroup>
               <MenuGroupLabel>Run on</MenuGroupLabel>
               <MenuRadioGroup
-                value={autoEnvironmentLabel ? "auto" : environmentId}
+                value={
+                  localVmSelected
+                    ? "action:local-vm"
+                    : autoEnvironmentLabel
+                      ? "auto"
+                      : environmentId
+                }
                 onValueChange={(value) =>
-                  value === "auto"
-                    ? onAutoEnvironment?.()
-                    : onEnvironmentChange?.(value as EnvironmentId)
+                  value === "action:local-vm"
+                    ? onLocalVm?.()
+                    : value === "auto"
+                      ? onAutoEnvironment?.()
+                      : onEnvironmentChange?.(value as EnvironmentId)
                 }
               >
                 {onAutoEnvironment && (
@@ -355,6 +369,11 @@ const RunContextSelector = memo(function RunContextSelector({
                     </span>
                   </MenuRadioItem>
                 ))}
+                {onLocalVm && (
+                  <MenuRadioItem value="action:local-vm" closeOnClick>
+                    New local VM
+                  </MenuRadioItem>
+                )}
               </MenuRadioGroup>
               {addTargets.length > 0 ? (
                 <MenuSub>
@@ -662,11 +681,28 @@ export const BranchToolbar = memo(function BranchToolbar({
     ],
   );
 
+  const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const localVmSelected = useComposerDraftStore((store) =>
+    draftId ? store.getDraftSession(draftId)?.environmentSelection === "local-vm" : false,
+  );
+  const onLocalVm =
+    draftId &&
+    !envLocked &&
+    !isServerThread &&
+    environmentId === primaryEnvironmentId &&
+    window.desktopBridge?.prepareLocalVm
+      ? () =>
+          setDraftThreadContext(draftId, {
+            environmentSelection: "local-vm",
+            loadBalancedEnvironmentId: null,
+          })
+      : undefined;
   const addTargets = useAddProjectTargets(activeProject, availableEnvironments);
   const onAddToMachine = (targetEnvironmentId: EnvironmentId | null) =>
     openAddProjectToMachine({ projectRef: activeProjectRef, targetEnvironmentId });
   // A project on one machine still gets the picker when it can be added to another.
-  const hasMultipleEnvironments = (availableEnvironments?.length ?? 0) > 1 || addTargets.length > 0;
+  const hasMultipleEnvironments =
+    (availableEnvironments?.length ?? 0) > 1 || addTargets.length > 0 || onLocalVm !== undefined;
   const showEnvironmentPicker = hasMultipleEnvironments && onEnvironmentChange !== undefined;
   const activeEnvironmentOption =
     availableEnvironments?.find((env) => env.environmentId === environmentId) ?? null;
@@ -688,6 +724,8 @@ export const BranchToolbar = memo(function BranchToolbar({
             displayMode="panel"
             workspaceRoot={activeProject.workspaceRoot}
             forceNewWorktree={forceNewWorktree}
+            localVmSelected={localVmSelected}
+            onLocalVm={onLocalVm}
             autoEnvironmentLabel={autoEnvironmentLabel}
             onAutoEnvironment={onAutoEnvironment}
             envLocked={envLocked}
@@ -738,6 +776,8 @@ export const BranchToolbar = memo(function BranchToolbar({
         <div className="contents @xl/composer-surface:hidden">
           <RunContextSelector
             forceNewWorktree={forceNewWorktree}
+            localVmSelected={localVmSelected}
+            onLocalVm={onLocalVm}
             autoEnvironmentLabel={autoEnvironmentLabel}
             onAutoEnvironment={onAutoEnvironment}
             envLocked={envLocked}
@@ -769,6 +809,8 @@ export const BranchToolbar = memo(function BranchToolbar({
           {showEnvironmentIndicator && availableEnvironments && (
             <>
               <BranchToolbarEnvironmentSelector
+                localVmSelected={localVmSelected}
+                onLocalVm={onLocalVm}
                 autoEnvironmentLabel={autoEnvironmentLabel}
                 onAutoEnvironment={onAutoEnvironment}
                 envLocked={envLocked}

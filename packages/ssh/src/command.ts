@@ -14,6 +14,8 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { buildSshChildEnvironment, type SshAuthOptions } from "./auth.ts";
 import { SshCommandError, SshInvalidTargetError } from "./errors.ts";
 
+import { localVmSshArgs } from "./localVm.ts";
+
 const DEFAULT_SSH_COMMAND_TIMEOUT_MS = 60_000;
 const MAX_SSH_ERROR_OUTPUT_LENGTH = 4_000;
 
@@ -109,6 +111,7 @@ export function baseSshArgs(
   input?: { readonly batchMode?: "yes" | "no" },
 ): string[] {
   return [
+    ...localVmSshArgs(target.alias),
     "-o",
     `BatchMode=${input?.batchMode ?? "no"}`,
     "-o",
@@ -416,6 +419,10 @@ export const resolveSshTarget = Effect.fn("ssh/command.resolveSshTarget")(functi
     return yield* new SshInvalidTargetError({ message: "SSH host alias is required." });
   }
 
+  // Lima allocates a fresh SSH port on resume. Keep the saved target independent of that port.
+  if (localVmSshArgs(trimmedAlias).length > 0) {
+    return { alias: trimmedAlias, hostname: "127.0.0.1", username: null, port: null };
+  }
   yield* Effect.logDebug("ssh.target.resolve.start", { alias: trimmedAlias });
   return yield* runSshCommand(
     {

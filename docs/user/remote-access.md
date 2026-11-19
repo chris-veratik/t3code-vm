@@ -3,6 +3,25 @@
 Connect a phone, browser, or another desktop app to T3 Code running on a different
 machine. That machine must stay running and reachable while you work.
 
+## Start a local VM from New Thread
+
+On an Apple Silicon Mac with Lima installed (`brew install lima`), open a project in the
+desktop app and choose **New Thread → Run on → New local VM**. Press **Send** to create
+the VM. The first launch downloads Ubuntu and T3 Code. The guest uses two virtual CPUs,
+4 GiB of memory and a 24 GiB virtual disk.
+
+A Git project starts at the selected local commit and keeps its project subdirectory.
+Commit any working changes you want in the VM before sending. A scratch thread starts
+in an empty directory. The checkout and terminal live inside the guest. A project that
+uses submodules or Git LFS needs its usual guest-side setup. Use **Settings → Providers**
+for the VM to install or sign in to the agent you want. Return to the same draft after
+setup to continue the first send.
+
+Open **Settings → Environments → Local VMs** to stop or resume a machine. Stop ends
+running processes and keeps the checkout, provider settings and chat history on the disk.
+Before choosing **Delete**, push your commits or export the files and chat history you
+want to keep. Managed VMs live under `~/.t3/lima` by default.
+
 ## T3 Connect
 
 T3 Connect makes an environment available to your other devices without setting

@@ -394,6 +394,32 @@ export const DesktopEnvironmentBootstrapSchema = Schema.Struct({
   bootstrapToken: Schema.optionalKey(Schema.String),
 });
 
+export const LocalVmLaunchId = Schema.String.check(
+  Schema.isPattern(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/),
+);
+export const LocalVmLaunchSchema = Schema.Struct({
+  id: LocalVmLaunchId,
+  title: TrimmedNonEmptyString,
+  cwd: Schema.NullOr(TrimmedNonEmptyString),
+  revision: Schema.NullOr(TrimmedNonEmptyString),
+});
+export type LocalVmLaunch = typeof LocalVmLaunchSchema.Type;
+export const LocalVmInfoSchema = Schema.Struct({
+  id: LocalVmLaunchId,
+  title: Schema.String,
+  status: Schema.String,
+  environmentId: Schema.NullOr(EnvironmentId),
+});
+export const LocalVmWorkspaceSchema = Schema.Struct({
+  environmentId: EnvironmentId,
+  alias: Schema.String,
+  workspaceRoot: Schema.String,
+});
+export const LocalVmActionSchema = Schema.Struct({
+  id: LocalVmLaunchId,
+  action: Schema.Literals(["start", "stop", "delete"]),
+});
+
 export const DesktopSshEnvironmentTargetSchema = Schema.Struct({
   alias: Schema.String,
   hostname: Schema.String,
@@ -1092,6 +1118,9 @@ export interface DesktopBridge {
   setClientSettings: (settings: ClientSettings) => Promise<void>;
   getConnectionCatalog: () => Promise<string | null>;
   setConnectionCatalog: (catalog: string) => Promise<boolean>;
+  prepareLocalVm?: (launch: LocalVmLaunch) => Promise<typeof LocalVmWorkspaceSchema.Type>;
+  listLocalVms?: () => Promise<ReadonlyArray<typeof LocalVmInfoSchema.Type>>;
+  manageLocalVm?: (input: typeof LocalVmActionSchema.Type) => Promise<void>;
   discoverSshHosts: () => Promise<readonly DesktopDiscoveredSshHost[]>;
   resolveSshHost: (alias: string) => Promise<DesktopSshEnvironmentTarget>;
   requestSnapShotPermissions: (includeAccessibility: boolean) => Promise<void>;

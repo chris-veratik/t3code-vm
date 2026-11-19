@@ -1,3 +1,4 @@
+import { LocalVmSettings } from "./LocalVmSettings";
 import { SessionPermissions } from "./SessionPermissions";
 import { useSearch } from "@tanstack/react-router";
 import { ChevronRightIcon, EllipsisIcon } from "lucide-react";
@@ -1679,6 +1680,7 @@ function ConnectionsSettingsContent({
           <LocalEnvironmentSetting />
         </SettingsSection>
       ) : null}
+      {desktopBridge?.listLocalVms && <LocalVmSettings />}
       <SettingsSection
         {...searchableSetting("remote-environments")}
         title="Environments"

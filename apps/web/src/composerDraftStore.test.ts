@@ -1273,6 +1273,29 @@ describe("composerDraftStore project draft thread mapping", () => {
     });
   });
 
+  it("keeps the local VM choice while editing the branch and moves the original draft to its guest", () => {
+    const store = useComposerDraftStore.getState();
+    store.setProjectDraftThreadId(projectRef, draftId, { threadId });
+    store.setPrompt(draftId, "Read the checkout in my VM");
+    store.setDraftThreadContext(draftId, { environmentSelection: "local-vm" });
+    store.setDraftThreadContext(draftId, { branch: "feature/local" });
+    expect(store.getDraftSession(draftId)).toMatchObject({
+      environmentSelection: "local-vm",
+      branch: "feature/local",
+      threadId,
+    });
+    store.setDraftThreadContext(draftId, {
+      projectRef: remoteProjectRef,
+      environmentSelection: "manual",
+      branch: null,
+    });
+    expect(store.getDraftSession(draftId)).toMatchObject({
+      environmentId: OTHER_TEST_ENVIRONMENT_ID,
+      threadId,
+    });
+    expect(store.getComposerDraft(draftId)?.prompt).toBe("Read the checkout in my VM");
+  });
+
   it("pins manual workspace choices and can return to automatic routing without losing the prompt", () => {
     const store = useComposerDraftStore.getState();
     store.setProjectDraftThreadId(projectRef, draftId, { threadId });

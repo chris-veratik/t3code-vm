@@ -895,8 +895,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     lockedInstanceId:
       activeThread?.runtime?.providerInstanceId ?? activeThreadModelSelection?.instanceId,
   });
+  // Before a VM is created, Send prepares the guest. Its provider capabilities arrive after pairing.
+  const preparingLocalVm = useComposerDraftStore(
+    (store) =>
+      typeof composerDraftTarget === "string" &&
+      store.getDraftSession(composerDraftTarget)?.environmentSelection === "local-vm",
+  );
   const noProviderAvailable =
-    selectedProviderEntry === undefined && multipleModelSelections === null;
+    !preparingLocalVm && selectedProviderEntry === undefined && multipleModelSelections === null;
   const providerCatalogPending = noProviderAvailable && !providerCatalogKnown;
   const showProviderUnavailable = noProviderAvailable && !providerCatalogPending;
   const providerSetupInstanceId = noProviderAvailable
@@ -936,7 +942,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       ? attachmentBlockReason
       : (attachmentBlockReason ??
         runtimeModeCeilingDenial ??
-        (multipleModelSelections === null ? providerSendBlockReason : null)));
+        (!preparingLocalVm && multipleModelSelections === null ? providerSendBlockReason : null)));
   const isSendDisabled = sendDisabledReason !== null;
   const selectedProviderStatus = selectedProviderEntry?.snapshot ?? null;
   const selectedProviderSkills = selectedProviderStatus

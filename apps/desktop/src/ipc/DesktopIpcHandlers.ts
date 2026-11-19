@@ -1,3 +1,4 @@
+import * as LocalVmIpc from "./methods/localVm.ts";
 import * as Effect from "effect/Effect";
 
 import { receiveProviderAuthCallback, cancelProviderAuthCallback } from "./methods/providerAuth.ts";
@@ -128,6 +129,9 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   yield* ipc.handle(acknowledgeSnapShot);
   yield* ipc.handle(setConnectionCatalog);
 
+  yield* ipc.handle(LocalVmIpc.prepareLocalVm);
+  yield* ipc.handle(LocalVmIpc.listLocalVms);
+  yield* ipc.handle(LocalVmIpc.manageLocalVm);
   yield* ipc.handle(discoverSshHosts);
   yield* ipc.handle(resolveSshHost);
   yield* ipc.handle(ensureSshEnvironment);
