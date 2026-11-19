@@ -25,9 +25,11 @@ Custom container images, lifecycle scripts and platform-specific SDKs need their
 usual setup inside the guest.
 
 To use your Mac's Git sign-in, open **Settings → Environments → Local VMs** and turn on
-**Use Mac Git for this project** beside a project VM. The choice applies to that Mac
-checkout and its VM launches. To enable it before the first launch, run
-`git config --local t3code.localVmGitAuth true` in the Mac checkout. Fetch, pull and
+**Use Mac Git for this project** beside a project VM. T3 remembers the choice for
+existing and future VMs opened from that project folder. Other folders in the same
+repository and linked worktrees each have their own choice. For a project at the root
+of the main checkout, you can turn sharing on before the first launch with
+`git config --local t3code.localVmGitAuth true`. Fetch, pull and
 push to `origin` use the Mac's HTTPS credential helper or SSH identity, including a
 separate push URL. Keep the desktop app open. Turn off the same switch to return to
 guest authentication. Other remotes, submodules and Git LFS authenticate separately.

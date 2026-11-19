@@ -24,23 +24,50 @@ it.skipIf(!NodeFS.existsSync("/usr/bin/git"))(
       NodeUtil.promisify(NodeChildProcess.execFile)("/usr/bin/git", ["-C", root, ...args]);
     const project = {
       root,
+      subdirectory: "",
       origin: "https://example.org/team/repo.git",
       pushOrigin: "git@work:fork/repo.git",
     };
-    vi.stubEnv("GIT_CONFIG_GLOBAL", "/dev/null");
+    const globalConfig = NodePath.join(root, "global.gitconfig");
+    vi.stubEnv("GIT_CONFIG_GLOBAL", globalConfig);
     vi.stubEnv("GIT_CONFIG_NOSYSTEM", "1");
     try {
+      await NodeFSP.writeFile(globalConfig, "[t3code]\n\tlocalVmGitAuth = true\n");
       await git("init", "-q");
       await git("remote", "add", "origin", project.origin);
       await git("remote", "set-url", "--push", "origin", project.pushOrigin);
       expect(await projectGitEnabled(project)).toBe(false);
       await setProjectGitEnabled(project, true);
       expect(await projectGitEnabled(project)).toBe(true);
+      const folder = { ...project, subdirectory: "apps/web client" };
+      const sibling = { ...project, subdirectory: "apps/server" };
+      const linked = { ...project, root: NodePath.join(root, "linked") };
+      await git(
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "--allow-empty",
+        "-qm",
+        "seed",
+      );
+      await git("worktree", "add", "--quiet", "--detach", linked.root);
+      expect(await projectGitEnabled(linked)).toBe(false);
+      expect(await projectGitEnabled(folder)).toBe(false);
+      await setProjectGitEnabled(folder, true);
+      await setProjectGitEnabled(linked, true);
+      expect(await projectGitEnabled(folder)).toBe(true);
+      expect(await projectGitEnabled(linked)).toBe(true);
+      expect(await projectGitEnabled(sibling)).toBe(false);
+      expect(await projectGitEnabled({ ...linked, subdirectory: folder.subdirectory })).toBe(false);
       await git("remote", "set-url", "--push", "origin", "git@work:other/repo.git");
       expect(await projectGitEnabled(project)).toBe(false);
       await git("remote", "set-url", "--push", "origin", project.pushOrigin);
       await setProjectGitEnabled(project, false);
       expect(await projectGitEnabled(project)).toBe(false);
+      expect(await projectGitEnabled(folder)).toBe(true);
+      expect(await projectGitEnabled(linked)).toBe(true);
     } finally {
       vi.unstubAllEnvs();
       await NodeFSP.rm(root, { recursive: true, force: true });
@@ -122,7 +149,7 @@ it.skipIf(!NodeFS.existsSync("/usr/bin/git"))(
       await new Promise<void>((resolve) => upstream.listen(0, "127.0.0.1", resolve));
       const port = (upstream.address() as NodeNet.AddressInfo).port;
       const origin = "https://127.0.0.1:" + port + "/org/repo.git";
-      const project = { root, origin, pushOrigin: origin };
+      const project = { root, subdirectory: "", origin, pushOrigin: origin };
       await git("init", "-q");
       await git("remote", "add", "origin", origin);
       await git("config", "http." + origin + ".sslCAInfo", cert);

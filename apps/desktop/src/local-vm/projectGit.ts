@@ -11,7 +11,6 @@ import { forwardToGuest, guestCommand } from "./guestTunnel.ts";
 
 declare const __T3CODE_LOCAL_VM_GIT_GUEST__: string;
 const run = NodeUtil.promisify(NodeChildProcess.execFile);
-const preference = "t3code.localVmGitAuth";
 const script = '"$HOME/.local/share/t3-local-vm/git/remote.py"';
 const gitEnv = () => ({
   ...process.env,
@@ -21,7 +20,12 @@ const gitEnv = () => ({
   PATH: (process.env.PATH ?? "") + ":/opt/homebrew/bin:/usr/local/bin",
 });
 
-export type ProjectRemote = { root: string; origin: string; pushOrigin: string };
+export type ProjectRemote = {
+  root: string;
+  subdirectory: string;
+  origin: string;
+  pushOrigin: string;
+};
 type Service = "git-upload-pack" | "git-receive-pack";
 
 export function portableOrigin(value: string): string | null {
@@ -72,10 +76,26 @@ async function matchesProjectOrigin(project: ProjectRemote) {
   );
 }
 
+async function projectGitPreference(project: ProjectRemote, enabled?: boolean) {
+  const [gitDir, commonDir] = await Promise.all([
+    git(project.root, ["rev-parse", "--absolute-git-dir"]),
+    git(project.root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]),
+  ]);
+  // Linked worktrees share the common config. Their VM permission belongs in their private config.
+  const file = NodePath.join(gitDir, gitDir === commonDir ? "config" : "config.worktree");
+  const key = project.subdirectory
+    ? `t3code.${encodeURIComponent(project.subdirectory)}.localVmGitAuth`
+    : "t3code.localVmGitAuth";
+  return git(project.root, [
+    "config",
+    "--file",
+    file,
+    ...(enabled === undefined ? ["--type=bool", "--get", key] : [key, String(enabled)]),
+  ]);
+}
+
 export async function projectGitEnabled(project: ProjectRemote) {
-  const value = await git(project.root, ["config", "--type=bool", "--get", preference]).catch(
-    () => "",
-  );
+  const value = await projectGitPreference(project).catch(() => "");
   return value === "true" && matchesProjectOrigin(project);
 }
 
@@ -83,7 +103,7 @@ export async function setProjectGitEnabled(project: ProjectRemote, enabled: bool
   if (enabled && !(await matchesProjectOrigin(project))) {
     throw new Error("The Mac checkout's origin has changed. Start a VM from its current origin.");
   }
-  await git(project.root, ["config", "--local", preference, String(enabled)]);
+  await projectGitPreference(project, enabled);
 }
 
 function gitCredential(root: string, url: string): Promise<Record<string, string>> {

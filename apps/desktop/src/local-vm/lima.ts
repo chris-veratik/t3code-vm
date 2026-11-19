@@ -100,7 +100,12 @@ function projectRemote(record: LaunchRecord): ProjectRemote | null {
   if (!record.root || !record.origin || !pushOrigin) return null;
   if (portableOrigin(record.origin) !== record.origin || portableOrigin(pushOrigin) !== pushOrigin)
     return null;
-  return { root: record.root, origin: record.origin, pushOrigin };
+  return {
+    root: record.root,
+    subdirectory: record.subdirectory,
+    origin: record.origin,
+    pushOrigin,
+  };
 }
 
 const gitTunnels = new Map<string, Awaited<ReturnType<typeof openProjectGit>>>();
@@ -497,7 +502,7 @@ export async function manageLocalVm({ id, action }: typeof LocalVmActionSchema.T
     for (const vm of await listLocalVms()) {
       if (!vm.projectGit || !vm.environmentId || vm.status !== "Running") continue;
       const other = await readLaunch(vm.id);
-      if (other.root === project.root) {
+      if (other.root === project.root && other.subdirectory === project.subdirectory) {
         const identity = vm.environmentId;
         await serialize(vm.id, () => reconcileProjectGit(other, identity));
       }
