@@ -15,6 +15,23 @@ Commit any working changes you want in the VM before sending. A scratch thread s
 in an empty directory. The checkout and terminal live inside the guest. A project that
 uses submodules or Git LFS needs its usual guest-side setup.
 
+For a project VM, T3 checks committed tool declarations in the selected directory and
+its parent directories up to the repository root. It installs declared runtimes and
+build tools before starting the first turn. It recognizes common language manifests,
+version files, mise and asdf declarations, and supported official Dev Container
+features. A scratch VM or a checkout without recognized declarations skips project
+tool installation. Install application dependencies with the project's usual command.
+Custom container images, lifecycle scripts and platform-specific SDKs need their
+usual setup inside the guest.
+
+To use your Mac's Git sign-in, open **Settings → Environments → Local VMs** and turn on
+**Use Mac Git for this project** beside a project VM. The choice applies to that Mac
+checkout and its VM launches. To enable it before the first launch, run
+`git config --local t3code.localVmGitAuth true` in the Mac checkout. Fetch, pull and
+push to `origin` use the Mac's HTTPS credential helper or SSH identity, including a
+separate push URL. Keep the desktop app open. Turn off the same switch to return to
+guest authentication. Other remotes, submodules and Git LFS authenticate separately.
+
 To use your Mac accounts in T3 Code, open **Settings → Environments → Local VMs**
 and turn on **Use my Mac subscriptions**. Running VMs connect immediately, stopped
 VMs connect when resumed, and new VMs inherit the setting. Keep the Mac app open.

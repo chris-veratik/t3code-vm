@@ -68,6 +68,8 @@ export const monitorLocalVmSubscriptions = Effect.fn("DesktopLocalVm.monitorSubs
       (yield* HostProcess.Platform) === "darwin" &&
       (yield* HostProcess.Architecture) === "arm64"
     ) {
+      const closeGit = Lima.monitorProjectGit();
+      yield* Effect.addFinalizer(() => Effect.promise(closeGit));
       const close = Lima.localVmSubscriptions.monitor();
       yield* Effect.addFinalizer(() => Effect.promise(close));
     }

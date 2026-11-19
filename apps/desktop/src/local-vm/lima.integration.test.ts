@@ -90,6 +90,26 @@ it.skipIf(process.env.RUN_LIMA_INTEGRATION !== "1")(
       const commit = (await git("rev-parse", "HEAD")).stdout.trim();
       await NodeFSP.writeFile(NodePath.join(cwd, "README.md"), "uncommitted\n");
       await NodeFSP.writeFile(NodePath.join(cwd, ".env"), "host only\n");
+      const upstream = NodePath.join(root, "upstream.git");
+      await git("clone", "--bare", "--", project, upstream);
+      const transport = NodePath.join(root, "git-ssh");
+      await NodeFSP.writeFile(
+        transport,
+        [
+          "#!/bin/sh",
+          "for last do :; done",
+          'case "$last" in',
+          `"git-upload-pack 'fetch.git'") exec /usr/bin/git upload-pack "${upstream}" ;;`,
+          `"git-receive-pack 'push.git'") exec /usr/bin/git receive-pack "${upstream}" ;;`,
+          "*) exit 1 ;;",
+          "esac",
+        ].join("\n"),
+        { mode: 0o700 },
+      );
+      await git("remote", "add", "origin", "git@t3-vm-test:fetch.git");
+      await git("remote", "set-url", "--push", "origin", "git@t3-vm-test:push.git");
+      await git("config", "core.sshCommand", transport);
+      await git("config", "t3code.localVmGitAuth", "false");
       const request = { id, title: "test", cwd, revision: "HEAD" };
       const [workspace, retry] = await Promise.all([
         prepareLocalVm(request),
@@ -107,6 +127,22 @@ it.skipIf(process.env.RUN_LIMA_INTEGRATION !== "1")(
         ).stdout.trimEnd();
       const inProject = (command: string) => ssh(`cd "${workspace.workspaceRoot}" && ${command}`);
       expect(workspace.uninstalledProviders).toEqual([]);
+      expect(workspace.projectToolsWarning).toBeUndefined();
+      expect(
+        await ssh('test ! -e "$HOME/.local/share/t3-local-vm/project-tools" && echo skipped'),
+      ).toBe("skipped");
+      await manageLocalVm({ id, action: "enableProjectGit" });
+      expect(await inProject("git ls-remote --exit-code origin HEAD")).toContain(commit);
+      await inProject("git fetch -q origin && git push -q origin HEAD:refs/heads/vm");
+      expect(
+        (
+          await execFile("/usr/bin/git", ["--git-dir", upstream, "rev-parse", "refs/heads/vm"])
+        ).stdout.trim(),
+      ).toBe(commit);
+      await manageLocalVm({ id, action: "disableProjectGit" });
+      expect(await inProject("git config --get remote.origin.vcs || echo restored")).toBe(
+        "restored",
+      );
       const versions = () =>
         ssh('"$HOME/.local/bin/codex" --version && "$HOME/.local/bin/claude" --version');
       const python = (code: string) => ssh("python3 -c '" + code.replaceAll("'", "'\\''") + "'");

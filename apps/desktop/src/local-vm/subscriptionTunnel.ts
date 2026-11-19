@@ -1,75 +1,19 @@
 // @effect-diagnostics nodeBuiltinImport:off globalTimers:off -- this desktop transport uses pinned OpenSSH forwarding between private Unix sockets.
-import * as NodeChildProcess from "node:child_process";
 import * as NodeCrypto from "node:crypto";
-import * as NodeFSP from "node:fs/promises";
 import * as NodeNet from "node:net";
-import * as NodePath from "node:path";
 import { installLocalVmProvider } from "./providers.ts";
-import { localVmSshArgs } from "@t3tools/ssh/localVm";
+import { forwardToGuest, guestCommand } from "./guestTunnel.ts";
 import { isCredentialError, macCredentials, type SubscriptionRequest } from "./macCredentials.ts";
 
 declare const __T3CODE_LOCAL_VM_SUBSCRIPTION_GUEST__: string;
 const agent = '"$HOME/.local/share/t3-local-vm/subscriptions/bridge.py"';
 type Issue = (op: SubscriptionRequest, previous: string | null) => Promise<unknown>;
 
-function sshArgs(alias: string) {
-  const args = localVmSshArgs(alias);
-  if (!args.length) throw new Error("Unknown managed local VM.");
-  return [
-    ...args,
-    "-T",
-    "-o",
-    "BatchMode=yes",
-    "-o",
-    "ConnectTimeout=5",
-    "-o",
-    "ForwardX11=no",
-    "-o",
-    "ServerAliveInterval=10",
-    "-o",
-    "ServerAliveCountMax=2",
-  ];
-}
-
-function identityCheck(identity: string) {
-  const quoted = "'" + identity.replaceAll("'", "'\\''") + "'";
-  return 'test "$(cat "$HOME/.t3/userdata/environment-id")" = ' + quoted + " || exit 41\n";
-}
-
-async function guestCommand(
-  alias: string,
-  identity: string,
-  command: string,
-  input = "",
-  timeout = 12_000,
-) {
-  return new Promise<string>((resolve, reject) => {
-    const child = NodeChildProcess.execFile(
-      "/usr/bin/ssh",
-      [...sshArgs(alias), alias, identityCheck(identity) + command],
-      { timeout, maxBuffer: 4096 },
-      (error, stdout) => {
-        if (error)
-          reject(
-            new Error(
-              error.code === 41
-                ? "The saved VM identity does not match its disk."
-                : "Could not configure the VM over its pinned SSH connection.",
-            ),
-          );
-        else resolve(stdout.trim());
-      },
-    );
-    child.stdin?.on("error", () => {});
-    child.stdin?.end(input);
-  });
-}
-
 export function restoreGuest(alias: string, identity: string) {
   return guestCommand(
     alias,
     identity,
-    "if test -f " + agent + "; then exec python3 " + agent + " restore; fi",
+    "if test -f " + agent + "; then exec /usr/bin/python3 " + agent + " restore; fi",
   );
 }
 
@@ -161,91 +105,22 @@ export async function openSubscriptionTunnel(
   );
   const [uid = "", ...missing] = installed.split("\n");
   if (!/^\d{1,10}$/.test(uid)) throw new Error("Could not identify the VM user.");
-  const directory = await NodeFSP.mkdtemp("/tmp/t3-sub-");
-  const local = NodePath.join(directory, "s");
   const remote = "/run/user/" + uid + "/t3-" + NodeCrypto.randomUUID() + ".sock";
-  let stopListening: (() => void) | undefined;
-  try {
-    stopListening = await listenForCredentials(local, issue);
-    const child = NodeChildProcess.spawn(
-      "/usr/bin/ssh",
-      [
-        ...sshArgs(alias),
-        "-o",
-        "ExitOnForwardFailure=yes",
-        "-R",
-        remote + ":" + local,
-        alias,
-        identityCheck(identity) +
-          "exec python3 " +
-          agent +
-          " attach " +
-          remote +
-          (claude ? " claude" : " codex"),
-      ],
-      { stdio: ["pipe", "pipe", "ignore"] },
-    );
-    child.stdin.on("error", () => {});
-    let alive = true;
-    const closed = new Promise<void>((resolve) => {
-      child.once("close", () => {
-        alive = false;
-        stopListening?.();
-        stopListening = undefined;
-        void NodeFSP.rm(directory, { recursive: true, force: true }).then(resolve, resolve);
-      });
-    });
-    const stop = async () => {
-      stopListening?.();
-      stopListening = undefined;
-      child.stdin.end();
-      const timer = setTimeout(() => child.kill(), 3000);
-      try {
-        await closed;
-      } finally {
-        clearTimeout(timer);
-      }
-    };
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const fail = () =>
-          reject(
-            new Error(
-              "The VM could not attach the subscription connection. Retry in Settings → Environments.",
-            ),
-          );
-        const timer = setTimeout(fail, 12_000);
-        child.once("error", fail);
-        void closed.then(() => {
-          clearTimeout(timer);
-          fail();
-        });
-        let buffer = "";
-        child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
-          buffer += chunk;
-          if (buffer === "ready\n") {
-            clearTimeout(timer);
-            resolve();
-          } else if (buffer.length > 12) fail();
-        });
-      });
-      return {
-        claude,
-        installationProblem: missing.length
-          ? "Could not install " + missing.join(" and ") + " in the VM. Retry the connection."
-          : null,
-        get alive() {
-          return alive;
-        },
-        stop,
-      };
-    } catch (error) {
-      await stop();
-      throw error;
-    }
-  } catch (error) {
-    stopListening?.();
-    await NodeFSP.rm(directory, { recursive: true, force: true });
-    throw error;
-  }
+  const tunnel = await forwardToGuest(
+    alias,
+    identity,
+    remote,
+    "exec /usr/bin/python3 " + agent + " attach " + remote + (claude ? " claude" : " codex"),
+    (local) => listenForCredentials(local, issue),
+  );
+  return {
+    claude,
+    installationProblem: missing.length
+      ? "Could not install " + missing.join(" and ") + " in the VM. Retry the connection."
+      : null,
+    get alive() {
+      return tunnel.alive;
+    },
+    stop: tunnel.stop,
+  };
 }

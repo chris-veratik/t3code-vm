@@ -1,4 +1,4 @@
-// @effect-diagnostics nodeBuiltinImport:off -- This macOS driver owns native limactl and git processes, cancellation, and atomic on-disk state.
+// @effect-diagnostics nodeBuiltinImport:off globalTimers:off -- This macOS driver owns native limactl and git processes, cancellation, and atomic on-disk state.
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFSP from "node:fs/promises";
 import * as NodeOS from "node:os";
@@ -6,6 +6,14 @@ import * as NodePath from "node:path";
 import * as NodeUtil from "node:util";
 import { EnvironmentId, type LocalVmLaunch, type LocalVmActionSchema } from "@t3tools/contracts";
 import { localVmHome } from "@t3tools/ssh/localVm";
+import {
+  openProjectGit,
+  portableOrigin,
+  restoreProjectGit,
+  projectGitEnabled,
+  setProjectGitEnabled,
+  type ProjectRemote,
+} from "./projectGit.ts";
 import { LocalVmSubscriptions } from "./subscriptions.ts";
 import { installLocalVmProvider, localVmProviders } from "./providers.ts";
 import {
@@ -15,12 +23,16 @@ import {
   localVmTemplate,
 } from "./template.ts";
 
+declare const __T3CODE_LOCAL_VM_PROJECT_TOOLS__: string;
+
 const execute = NodeUtil.promisify(NodeChildProcess.execFile);
 type LaunchRecord = LocalVmLaunch & {
   root: string | null;
   commit: string | null;
   subdirectory: string;
   origin: string | null;
+  pushOrigin?: string | null;
+  additionalPushUrls?: string[];
 };
 
 function machineName(id: string) {
@@ -82,22 +94,50 @@ async function git(cwd: string, args: string[]) {
   ).stdout.trimEnd();
 }
 
-function portableOrigin(value: string) {
-  if (/^git@[\w.-]+:[\w./-]+$/.test(value)) return value;
+function projectRemote(record: LaunchRecord): ProjectRemote | null {
+  // Older launch records seeded origin for both fetch and push.
+  const pushOrigin = record.pushOrigin === undefined ? record.origin : record.pushOrigin;
+  if (!record.root || !record.origin || !pushOrigin) return null;
+  if (portableOrigin(record.origin) !== record.origin || portableOrigin(pushOrigin) !== pushOrigin)
+    return null;
+  return { root: record.root, origin: record.origin, pushOrigin };
+}
+
+const gitTunnels = new Map<string, Awaited<ReturnType<typeof openProjectGit>>>();
+const gitProblems = new Map<string, string>();
+
+async function closeProjectGit(id: string) {
+  const tunnel = gitTunnels.get(id);
+  gitTunnels.delete(id);
+  gitProblems.delete(id);
+  await tunnel?.stop();
+}
+
+async function reconcileProjectGit(record: LaunchRecord, identity: string) {
+  const project = projectRemote(record);
+  const marker = NodePath.join(recordDir(record.id), "git-restore");
   try {
-    const url = new URL(value);
-    if (
-      ["https:", "ssh:"].includes(url.protocol) &&
-      !url.password &&
-      !url.search &&
-      !url.hash &&
-      (!url.username || (url.protocol === "ssh:" && url.username === "git"))
-    )
-      return url.href;
+    if (!project || !(await projectGitEnabled(project))) {
+      await closeProjectGit(record.id);
+      if (await exists(marker)) {
+        await restoreProjectGit("lima-" + machineName(record.id), identity);
+        await NodeFSP.rm(marker, { force: true });
+      }
+      return;
+    }
+    if (gitTunnels.get(record.id)?.alive) return;
+    await closeProjectGit(record.id);
+    await NodeFSP.writeFile(marker, "", { mode: 0o600 });
+    gitTunnels.set(
+      record.id,
+      await openProjectGit("lima-" + machineName(record.id), identity, project),
+    );
   } catch {
-    /* Local paths stay on the source machine. */
+    gitProblems.set(
+      record.id,
+      "Could not connect Git to the Mac. Check the checkout and its origin.",
+    );
   }
-  return null;
 }
 
 async function recordLaunch(input: LocalVmLaunch): Promise<LaunchRecord> {
@@ -109,6 +149,8 @@ async function recordLaunch(input: LocalVmLaunch): Promise<LaunchRecord> {
     let commit = null;
     let subdirectory = "";
     let origin = null;
+    let pushOrigin = null;
+    let additionalPushUrls: string[] | undefined;
     if (input.cwd !== null) {
       if (!NodePath.isAbsolute(input.cwd))
         throw new Error("The source checkout must have an absolute path.");
@@ -126,13 +168,28 @@ async function recordLaunch(input: LocalVmLaunch): Promise<LaunchRecord> {
       ]);
       subdirectory = NodePath.relative(await NodeFSP.realpath(root), cwd);
       origin = portableOrigin(await git(root, ["remote", "get-url", "origin"]).catch(() => ""));
+      const targets = (
+        await git(root, ["remote", "get-url", "--push", "--all", "origin"]).catch(() => "")
+      )
+        .split("\n")
+        .map(portableOrigin);
+      pushOrigin = targets.length === 1 ? (targets[0] ?? null) : null;
+      if (targets.length > 1 && targets.every((url) => url !== null)) additionalPushUrls = targets;
     }
     const temp = await NodeFSP.mkdtemp(NodePath.join(dir, ".launch-"));
     try {
       const candidate = NodePath.join(temp, "record");
       await NodeFSP.writeFile(
         candidate,
-        JSON.stringify({ ...input, root, commit, subdirectory, origin }),
+        JSON.stringify({
+          ...input,
+          root,
+          commit,
+          subdirectory,
+          origin,
+          pushOrigin,
+          additionalPushUrls,
+        }),
         {
           mode: 0o600,
         },
@@ -191,7 +248,7 @@ async function prepare(input: LocalVmLaunch, signal: AbortSignal) {
   const uninstalledProviders = localVmProviders.filter(
     (_, i) => installs[i]?.status === "rejected",
   );
-  await guest(["sh", "-c", installGuestService]);
+  await guest(["sh", "-c", installGuestService, "sh", record.root ? "project" : "scratch"]);
   const home = await guest(["sh", "-c", 'printf %s "$HOME"']);
   const identityFile = NodePath.join(recordDir(input.id), "environment-id");
   const environmentId = EnvironmentId.make(
@@ -246,7 +303,15 @@ if [ -n "$2" ]; then
   git clone -q -b workspace "$HOME/.t3/source.bundle" "$stage/checkout"
   test "$(git -C "$stage/checkout" rev-parse HEAD)" = "$2"
   git -C "$stage/checkout" remote remove origin
-  if [ -n "$3" ]; then git -C "$stage/checkout" remote add origin "$3"; fi
+  if [ -n "$3" ]; then
+    git -C "$stage/checkout" remote add origin "$3"
+    if [ "$#" -gt 3 ]; then
+      (
+        shift 3
+        for target do git -C "$stage/checkout" remote set-url --add --push origin "$target"; done
+      )
+    fi
+  fi
 else
   mkdir "$stage/checkout"
 fi
@@ -256,16 +321,39 @@ rm -f "$HOME/.t3/source.bundle"`,
         workspace,
         record.commit ?? "",
         record.origin ?? "",
+        ...(record.additionalPushUrls ??
+          (record.pushOrigin !== undefined && record.pushOrigin !== record.origin
+            ? [record.pushOrigin ?? "/dev/null"]
+            : [])),
       ]);
     } finally {
       await NodeFSP.rm(temp, { recursive: true, force: true });
     }
+  }
+  let projectToolsWarning: string | undefined;
+  if (record.root && record.commit) {
+    try {
+      await guest([
+        "/usr/bin/python3",
+        "-c",
+        __T3CODE_LOCAL_VM_PROJECT_TOOLS__,
+        NodePath.join(workspace, "checkout"),
+        record.commit,
+        record.subdirectory,
+      ]);
+    } catch (error) {
+      signal.throwIfAborted();
+      projectToolsWarning =
+        error instanceof Error ? error.message.slice(-600) : "Could not install project tools.";
+    }
+    await reconcileProjectGit(record, environmentId);
   }
   return {
     alias,
     environmentId,
     workspaceRoot: NodePath.join(workspace, "checkout", record.subdirectory),
     uninstalledProviders,
+    ...(projectToolsWarning ? { projectToolsWarning } : {}),
   };
 }
 
@@ -302,22 +390,46 @@ export function prepareLocalVm(input: LocalVmLaunch) {
   return task;
 }
 
-export async function listLocalVms() {
+function readLaunch(id: string): Promise<LaunchRecord> {
+  return NodeFSP.readFile(NodePath.join(recordDir(id), "launch.json"), "utf8").then(JSON.parse);
+}
+
+async function savedLaunches() {
   const dir = NodePath.join(localVmHome(), "_t3");
   if (!(await exists(dir))) return [];
-  const machines = await inventory();
-  const entries = await NodeFSP.readdir(dir);
-  const result = [];
-  for (const name of entries) {
+  const records: LaunchRecord[] = [];
+  for (const name of await NodeFSP.readdir(dir)) {
+    if (!/^t3-[a-f0-9]{32}$/.test(name)) continue;
     const file = NodePath.join(dir, name, "launch.json");
-    if (!/^t3-[a-f0-9]{32}$/.test(name) || !(await exists(file))) continue;
+    if (!(await exists(file))) continue;
     const record: LaunchRecord = JSON.parse(await NodeFSP.readFile(file, "utf8"));
-    if (machineName(record.id) !== name) continue;
-    const identity = NodePath.join(dir, name, "environment-id");
+    if (machineName(record.id) === name) records.push(record);
+  }
+  return records;
+}
+
+async function inventoryLocalVms(includeGit: boolean) {
+  const records = await savedLaunches();
+  if (!records.length) return [];
+  const machines = await inventory();
+  const result = [];
+  for (const record of records) {
+    const name = machineName(record.id);
+    const identity = NodePath.join(recordDir(record.id), "environment-id");
     const environmentId = (await exists(identity))
       ? EnvironmentId.make(await NodeFSP.readFile(identity, "utf8"))
       : null;
+    const project = includeGit ? projectRemote(record) : null;
     result.push({
+      ...(project
+        ? {
+            projectGit: {
+              enabled: await projectGitEnabled(project),
+              connected: gitTunnels.get(record.id)?.alive ?? false,
+              problem: gitProblems.get(record.id) ?? null,
+            },
+          }
+        : {}),
       id: record.id,
       title: record.title,
       environmentId,
@@ -329,13 +441,71 @@ export async function listLocalVms() {
   return result;
 }
 
-export const localVmSubscriptions = new LocalVmSubscriptions(listLocalVms);
+export const listLocalVms = () => inventoryLocalVms(true);
+export const localVmSubscriptions = new LocalVmSubscriptions(() => inventoryLocalVms(false));
+
+export function monitorProjectGit() {
+  let closed = false;
+  let pending: Promise<void> | undefined;
+  async function refresh() {
+    const projects = (await savedLaunches()).filter((record) => projectRemote(record));
+    for (const id of gitTunnels.keys())
+      if (!projects.some((r) => r.id === id)) await closeProjectGit(id);
+    if (!projects.length) return;
+    const running = new Set(
+      (await inventory()).filter((vm) => vm.status === "Running").map((vm) => vm.name),
+    );
+    await Promise.all(
+      projects.map((record) =>
+        serialize(record.id, async () => {
+          if (closed) return;
+          if (!running.has(machineName(record.id))) return closeProjectGit(record.id);
+          const identity = await NodeFSP.readFile(
+            NodePath.join(recordDir(record.id), "environment-id"),
+            "utf8",
+          ).catch(() => "");
+          if (identity) await reconcileProjectGit(record, identity);
+        }),
+      ),
+    );
+  }
+  const tick = () => {
+    if (!closed && !pending)
+      pending = refresh()
+        .catch(() => {})
+        .finally(() => {
+          pending = undefined;
+        });
+  };
+  tick();
+  const timer = setInterval(tick, 30_000);
+  timer.unref();
+  return async () => {
+    closed = true;
+    clearInterval(timer);
+    await pending;
+    await Promise.all([...gitTunnels.keys()].map(closeProjectGit));
+  };
+}
 
 export async function manageLocalVm({ id, action }: typeof LocalVmActionSchema.Type) {
+  if (action === "enableProjectGit" || action === "disableProjectGit") {
+    const record = await readLaunch(id);
+    const project = projectRemote(record);
+    if (!project) throw new Error("This VM has no shareable project origin.");
+    await setProjectGitEnabled(project, action === "enableProjectGit");
+    for (const vm of await listLocalVms()) {
+      if (!vm.projectGit || !vm.environmentId || vm.status !== "Running") continue;
+      const other = await readLaunch(vm.id);
+      if (other.root === project.root) {
+        const identity = vm.environmentId;
+        await serialize(vm.id, () => reconcileProjectGit(other, identity));
+      }
+    }
+    return;
+  }
   if (action === "start") {
-    const record: LaunchRecord = JSON.parse(
-      await NodeFSP.readFile(NodePath.join(recordDir(id), "launch.json"), "utf8"),
-    );
+    const record = await readLaunch(id);
     await prepareLocalVm(record);
     return;
   }
@@ -345,6 +515,7 @@ export async function manageLocalVm({ id, action }: typeof LocalVmActionSchema.T
     if (!(await exists(NodePath.join(dir, "launch.json"))))
       throw new Error("Unknown managed local VM.");
     const name = machineName(id);
+    await closeProjectGit(id);
     await localVmSubscriptions.stopVm(id);
     const machine = (await inventory()).find((row) => row.name === name);
     if (machine && machine.status !== "Stopped") await lima(["stop", name]);

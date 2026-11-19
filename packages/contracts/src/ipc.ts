@@ -405,6 +405,13 @@ export const LocalVmLaunchSchema = Schema.Struct({
 });
 export type LocalVmLaunch = typeof LocalVmLaunchSchema.Type;
 export const LocalVmInfoSchema = Schema.Struct({
+  projectGit: Schema.optionalKey(
+    Schema.Struct({
+      enabled: Schema.Boolean,
+      connected: Schema.Boolean,
+      problem: Schema.NullOr(Schema.String),
+    }),
+  ),
   id: LocalVmLaunchId,
   title: Schema.String,
   status: Schema.String,
@@ -430,11 +437,12 @@ export const LocalVmWorkspaceSchema = Schema.Struct({
   environmentId: EnvironmentId,
   alias: Schema.String,
   workspaceRoot: Schema.String,
+  projectToolsWarning: Schema.optionalKey(Schema.String),
   uninstalledProviders: Schema.optionalKey(Schema.Array(Schema.Literals(["codex", "claude"]))),
 });
 export const LocalVmActionSchema = Schema.Struct({
   id: LocalVmLaunchId,
-  action: Schema.Literals(["start", "stop", "delete"]),
+  action: Schema.Literals(["start", "stop", "delete", "enableProjectGit", "disableProjectGit"]),
 });
 
 export const DesktopSshEnvironmentTargetSchema = Schema.Struct({

@@ -34,6 +34,18 @@ if [ ! -x "$t3" ]; then
   echo "f7414a7e4a3e216534ed0a3b68e6f408352fb3d6621f87376d2932efb2b9e1c2  $installer" | sha256sum -c - >&2
   T3CODE_VERSION=0.1.10 sh "$installer" >&2
 fi
+if [ "\${1:-}" = project ]; then
+  dir="$HOME/.config/systemd/user/t3code.service.d"
+  dropin="$dir/10-t3-local-vm-path.conf"
+  if [ ! -f "$dropin" ]; then
+    mkdir -p "$dir"
+    temp=$(mktemp "$dir/.path.XXXXXX")
+    printf '%s\\n' '[Service]' 'Environment="PATH=%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"' > "$temp"
+    mv "$temp" "$dropin"
+    systemctl --user daemon-reload
+    if systemctl --user is-active --quiet t3code.service; then systemctl --user restart t3code.service; fi
+  fi
+fi
 if [ ! -f "$HOME/.t3/local-vm-service-installed" ]; then
   mkdir -p "$HOME/.t3"
   printf '%s\\n' 'T3CODE_HOST=127.0.0.1' > "$HOME/.t3/service.env"

@@ -86,7 +86,11 @@ export function LocalVmSettings() {
     setBusy(vm.id);
     try {
       await bridge.manageLocalVm({ id: vm.id, action });
-      if (vm.environmentId && readEnvironment(vm.environmentId)) {
+      if (
+        (action === "start" || action === "stop" || action === "delete") &&
+        vm.environmentId &&
+        readEnvironment(vm.environmentId)
+      ) {
         const result =
           action === "delete"
             ? await remove(vm.environmentId)
@@ -185,6 +189,7 @@ export function LocalVmSettings() {
           description={[
             vm.id.slice(0, 8),
             vm.status,
+            vm.projectGit?.problem ?? (vm.projectGit?.connected ? "Mac Git connected" : undefined),
             subscriptions?.problems[vm.id] ??
               (subscriptions?.connected.includes(vm.id)
                 ? "Mac subscriptions connected"
@@ -193,7 +198,20 @@ export function LocalVmSettings() {
             .filter(Boolean)
             .join(" · ")}
           control={
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {vm.projectGit && (
+                <label className="flex items-center gap-2 text-xs">
+                  Use Mac Git for this project
+                  <Switch
+                    aria-label={`Use Mac Git for the project in ${vm.title}`}
+                    checked={vm.projectGit.enabled}
+                    disabled={busy !== null}
+                    onCheckedChange={(checked) =>
+                      void act(vm, checked ? "enableProjectGit" : "disableProjectGit")
+                    }
+                  />
+                </label>
+              )}
               <Button
                 size="sm"
                 variant="outline"

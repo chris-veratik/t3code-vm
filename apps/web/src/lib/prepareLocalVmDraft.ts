@@ -150,6 +150,13 @@ export async function prepareLocalVmDraft(input: {
     }
     await waitForProject(projectRef);
     if (!pending()) return null;
+    if (workspace.projectToolsWarning) {
+      toastManager.add({
+        type: "warning",
+        title: "Project tools need attention",
+        description: workspace.projectToolsWarning,
+      });
+    }
     if (workspace.uninstalledProviders?.length) {
       const names = workspace.uninstalledProviders.map((p) =>
         p === "codex" ? "Codex" : "Claude Code",
