@@ -129,6 +129,9 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   yield* ipc.handle(acknowledgeSnapShot);
   yield* ipc.handle(setConnectionCatalog);
 
+  yield* LocalVmIpc.monitorLocalVmSubscriptions();
+  yield* ipc.handle(LocalVmIpc.getLocalVmSubscriptions);
+  yield* ipc.handle(LocalVmIpc.updateLocalVmSubscriptions);
   yield* ipc.handle(LocalVmIpc.prepareLocalVm);
   yield* ipc.handle(LocalVmIpc.listLocalVms);
   yield* ipc.handle(LocalVmIpc.manageLocalVm);

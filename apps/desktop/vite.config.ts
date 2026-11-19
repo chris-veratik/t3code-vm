@@ -1,4 +1,6 @@
+// @effect-diagnostics nodeBuiltinImport:off -- the desktop build embeds the guest-side Python launcher in the main bundle.
 import "vite-plus/test/config";
+import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 
 import { defaultInclude, defineConfig } from "vite-plus";
@@ -20,6 +22,11 @@ const devElectronCommand =
   NodeOS.platform() === "win32"
     ? "node scripts/dev-electron.mjs"
     : "exec node scripts/dev-electron.mjs";
+const subscriptionGuestDefine = {
+  __T3CODE_LOCAL_VM_SUBSCRIPTION_GUEST__: JSON.stringify(
+    NodeFS.readFileSync(new URL("./src/local-vm/subscription_guest.py", import.meta.url), "utf8"),
+  ),
+};
 const publicConfigDefine = {
   __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
     repoEnv.T3CODE_CLERK_PUBLISHABLE_KEY?.trim() ?? "",
@@ -27,6 +34,7 @@ const publicConfigDefine = {
 };
 
 export default defineConfig({
+  define: subscriptionGuestDefine,
   run: {
     tasks: {
       build: {
@@ -71,7 +79,7 @@ export default defineConfig({
       dts: false,
       sourcemap: true,
       outExtensions: () => ({ js: ".cjs" }),
-      define: publicConfigDefine,
+      define: { ...publicConfigDefine, ...subscriptionGuestDefine },
       outputOptions: { codeSplitting: false },
       entry: ["src/main.ts"],
       clean: true,

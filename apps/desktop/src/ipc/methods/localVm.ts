@@ -1,5 +1,7 @@
 import {
   LocalVmActionSchema,
+  LocalVmSubscriptionActionSchema,
+  LocalVmSubscriptionStateSchema,
   LocalVmInfoSchema,
   LocalVmLaunchSchema,
   LocalVmWorkspaceSchema,
@@ -46,3 +48,28 @@ export const manageLocalVm = makeIpcMethod({
   result: Schema.Void,
   handler: (input) => run(() => Lima.manageLocalVm(input)),
 });
+
+export const getLocalVmSubscriptions = makeIpcMethod({
+  channel: Channels.GET_LOCAL_VM_SUBSCRIPTIONS_CHANNEL,
+  payload: Schema.Void,
+  result: LocalVmSubscriptionStateSchema,
+  handler: () => run(() => Lima.localVmSubscriptions.state()),
+});
+export const updateLocalVmSubscriptions = makeIpcMethod({
+  channel: Channels.UPDATE_LOCAL_VM_SUBSCRIPTIONS_CHANNEL,
+  payload: LocalVmSubscriptionActionSchema,
+  result: LocalVmSubscriptionStateSchema,
+  handler: (action) => run(() => Lima.localVmSubscriptions.update(action)),
+});
+
+export const monitorLocalVmSubscriptions = Effect.fn("DesktopLocalVm.monitorSubscriptions")(
+  function* () {
+    if (
+      (yield* HostProcess.Platform) === "darwin" &&
+      (yield* HostProcess.Architecture) === "arm64"
+    ) {
+      const close = Lima.localVmSubscriptions.monitor();
+      yield* Effect.addFinalizer(() => Effect.promise(close));
+    }
+  },
+);

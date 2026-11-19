@@ -1,6 +1,6 @@
 export const localVmProviders = ["codex", "claude"] as const;
 
-// Each guest owns its provider binaries and logins. Codex uses the complete ARM64 package
+// Each guest runs its own provider binaries. Codex uses the complete ARM64 package
 // pinned by the guest T3 release. Claude uses Anthropic's checksum for its native ARM64 build.
 export const installLocalVmProvider = `set -eu
 bin="$HOME/.local/bin"

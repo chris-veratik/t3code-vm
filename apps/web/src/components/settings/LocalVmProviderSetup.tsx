@@ -29,6 +29,15 @@ export function LocalVmProviderSetup({
   const canOperateTerminal = useEnvironmentScope(environmentId, AuthTerminalOperateScope);
   const refresh = useAtomCommand(serverEnvironment.refreshProviders, { reportFailure: false });
   const [session, setSession] = useState<ProviderCliTerminalSession | null>(null);
+  const instanceConfig = config?.settings.providerInstances[provider.instanceId]?.config;
+  const shared =
+    instanceConfig !== null &&
+    typeof instanceConfig === "object" &&
+    "binaryPath" in instanceConfig &&
+    typeof instanceConfig.binaryPath === "string" &&
+    instanceConfig.binaryPath.endsWith(
+      "/.local/share/t3-local-vm/subscriptions/" + (driver === "codex" ? "codex" : "claude"),
+    );
   const signedIn = provider.auth.status === "authenticated";
   const refreshProvider = () => {
     void refresh({ environmentId, input: { instanceId: provider.instanceId } });
@@ -57,14 +66,18 @@ export function LocalVmProviderSetup({
         description={
           !provider.enabled
             ? "Enable this provider to set it up in the VM."
-            : signedIn
-              ? "Signed in on this VM."
-              : !canOperateTerminal
-                ? "Terminal access is required to set up this provider in the VM."
-                : "Open a terminal in this VM to connect your account."
+            : shared
+              ? signedIn
+                ? "Connected through your Mac subscription."
+                : "Check subscription sharing in Settings → Environments → Local VMs on your Mac."
+              : signedIn
+                ? "Signed in on this VM."
+                : !canOperateTerminal
+                  ? "Terminal access is required to set up this provider in the VM."
+                  : "Open a terminal in this VM to connect your account."
         }
         control={
-          signedIn ? undefined : (
+          signedIn || shared ? undefined : (
             <Button
               size="sm"
               variant="outline"

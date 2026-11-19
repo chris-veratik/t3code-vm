@@ -285,6 +285,47 @@ async function setup() {
 
 describe("EnvironmentProviderSettings routing", () => {
   it.each([
+    ["codex", "codex"],
+    ["claudeAgent", "claude"],
+  ] as const)("shows the Mac connection for the shared %s instance", async (driver, cli) => {
+    await setup();
+    const instanceId = ProviderInstanceId.make(driver);
+    appAtomRegistry.set(state.config, {
+      cwd: "/home/dev",
+      keybindings: [],
+      settings: {
+        ...state.settings,
+        providerInstances: {
+          [driver]: {
+            driver,
+            config: { binaryPath: "/home/dev/.local/share/t3-local-vm/subscriptions/" + cli },
+          },
+        },
+      },
+      environment: { platform: { os: "linux" }, capabilities: {} },
+    });
+    await setProviders([
+      {
+        ...provider(),
+        driver: ProviderDriverKind.make(driver),
+        instanceId,
+        auth: { status: "authenticated" },
+      },
+    ]);
+    await using _screen = await render(panel({ localVm: true, targetInstanceId: instanceId }));
+    await expect
+      .element(
+        page.getByRole("heading", {
+          name: driver === "codex" ? "ChatGPT account" : "Claude account",
+        }),
+      )
+      .toBeVisible();
+    expect(document.body.textContent).toContain("Connected through your Mac subscription.");
+    await expect
+      .element(page.getByRole("button", { name: "Sign in on VM" }))
+      .not.toBeInTheDocument();
+  });
+  it.each([
     ["codex", "codex login --device-auth"],
     ["claudeAgent", "claude auth login"],
   ] as const)(

@@ -6,6 +6,7 @@ import * as NodePath from "node:path";
 import * as NodeUtil from "node:util";
 import { EnvironmentId, type LocalVmLaunch, type LocalVmActionSchema } from "@t3tools/contracts";
 import { localVmHome } from "@t3tools/ssh/localVm";
+import { LocalVmSubscriptions } from "./subscriptions.ts";
 import { installLocalVmProvider, localVmProviders } from "./providers.ts";
 import {
   installGuestHostKey,
@@ -202,6 +203,12 @@ async function prepare(input: LocalVmLaunch, signal: AbortSignal) {
   } else {
     await NodeFSP.writeFile(identityFile, environmentId, { flag: "wx", mode: 0o600 });
   }
+  await localVmSubscriptions.prepare({
+    id: input.id,
+    title: record.title,
+    environmentId,
+    status: "Running",
+  });
   const workspace = home + "/.t3/local-vm-workspace";
   if (
     (await guest([
@@ -305,6 +312,7 @@ export async function listLocalVms() {
     const file = NodePath.join(dir, name, "launch.json");
     if (!/^t3-[a-f0-9]{32}$/.test(name) || !(await exists(file))) continue;
     const record: LaunchRecord = JSON.parse(await NodeFSP.readFile(file, "utf8"));
+    if (machineName(record.id) !== name) continue;
     const identity = NodePath.join(dir, name, "environment-id");
     const environmentId = (await exists(identity))
       ? EnvironmentId.make(await NodeFSP.readFile(identity, "utf8"))
@@ -321,6 +329,8 @@ export async function listLocalVms() {
   return result;
 }
 
+export const localVmSubscriptions = new LocalVmSubscriptions(listLocalVms);
+
 export async function manageLocalVm({ id, action }: typeof LocalVmActionSchema.Type) {
   if (action === "start") {
     const record: LaunchRecord = JSON.parse(
@@ -335,6 +345,7 @@ export async function manageLocalVm({ id, action }: typeof LocalVmActionSchema.T
     if (!(await exists(NodePath.join(dir, "launch.json"))))
       throw new Error("Unknown managed local VM.");
     const name = machineName(id);
+    await localVmSubscriptions.stopVm(id);
     const machine = (await inventory()).find((row) => row.name === name);
     if (machine && machine.status !== "Stopped") await lima(["stop", name]);
     if (action === "delete") {

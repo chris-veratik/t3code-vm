@@ -410,6 +410,22 @@ export const LocalVmInfoSchema = Schema.Struct({
   status: Schema.String,
   environmentId: Schema.NullOr(EnvironmentId),
 });
+export const LocalVmSubscriptionActionSchema = Schema.Literals([
+  "enable",
+  "disable",
+  "configureClaude",
+  "forgetClaude",
+  "retry",
+]);
+export type LocalVmSubscriptionAction = typeof LocalVmSubscriptionActionSchema.Type;
+export const LocalVmSubscriptionStateSchema = Schema.Struct({
+  enabled: Schema.Boolean,
+  claudeConfigured: Schema.Boolean,
+  connected: Schema.Array(LocalVmLaunchId),
+  problems: Schema.Record(Schema.String, Schema.String),
+  inventoryProblem: Schema.NullOr(Schema.String),
+});
+export type LocalVmSubscriptionState = typeof LocalVmSubscriptionStateSchema.Type;
 export const LocalVmWorkspaceSchema = Schema.Struct({
   environmentId: EnvironmentId,
   alias: Schema.String,
@@ -1119,6 +1135,10 @@ export interface DesktopBridge {
   setClientSettings: (settings: ClientSettings) => Promise<void>;
   getConnectionCatalog: () => Promise<string | null>;
   setConnectionCatalog: (catalog: string) => Promise<boolean>;
+  getLocalVmSubscriptions?: () => Promise<LocalVmSubscriptionState>;
+  updateLocalVmSubscriptions?: (
+    action: LocalVmSubscriptionAction,
+  ) => Promise<LocalVmSubscriptionState>;
   prepareLocalVm?: (launch: LocalVmLaunch) => Promise<typeof LocalVmWorkspaceSchema.Type>;
   listLocalVms?: () => Promise<ReadonlyArray<typeof LocalVmInfoSchema.Type>>;
   manageLocalVm?: (input: typeof LocalVmActionSchema.Type) => Promise<void>;

@@ -15,7 +15,20 @@ Commit any working changes you want in the VM before sending. A scratch thread s
 in an empty directory. The checkout and terminal live inside the guest. A project that
 uses submodules or Git LFS needs its usual guest-side setup.
 
-To connect your account, open **Settings → Providers**, select the **Local VM** and
+To use your Mac accounts in T3 Code, open **Settings → Environments → Local VMs**
+and turn on **Use my Mac subscriptions**. Running VMs connect immediately, stopped
+VMs connect when resumed, and new VMs inherit the setting. Keep the Mac app open.
+The default Codex provider uses your Mac’s Codex CLI ChatGPT sign-in. If needed,
+run `codex login` on the Mac. The Mac handles token refresh for all its VMs.
+
+For Claude, run `claude setup-token` in Terminal on the Mac. Choose **Save token**
+and paste it into the private Mac dialog. T3 stores it in your Mac Keychain and
+supplies it when the default Claude provider starts in a connected VM. This token
+gives the VM access to your Claude subscription. Use sharing with VMs you trust.
+Turn sharing off to restore each VM’s previous provider settings. Already running
+provider processes may continue with credentials they received earlier.
+
+To sign in separately in a VM, open **Settings → Providers**, select the **Local VM** and
 choose **Codex** or **Claude**. Choose **Sign in on VM**, then press **Enter** in
 the VM terminal. Open the link on your Mac and follow the provider’s instructions.
 For Codex, enable device-code login in your ChatGPT security settings if prompted.

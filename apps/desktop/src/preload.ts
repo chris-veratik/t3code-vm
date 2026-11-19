@@ -188,6 +188,11 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     ? {
         prepareLocalVm: (launch: Parameters<NonNullable<DesktopBridge["prepareLocalVm"]>>[0]) =>
           ipcRenderer.invoke(IpcChannels.PREPARE_LOCAL_VM_CHANNEL, launch),
+        getLocalVmSubscriptions: () =>
+          ipcRenderer.invoke(IpcChannels.GET_LOCAL_VM_SUBSCRIPTIONS_CHANNEL),
+        updateLocalVmSubscriptions: (
+          action: Parameters<NonNullable<DesktopBridge["updateLocalVmSubscriptions"]>>[0],
+        ) => ipcRenderer.invoke(IpcChannels.UPDATE_LOCAL_VM_SUBSCRIPTIONS_CHANNEL, action),
         listLocalVms: () => ipcRenderer.invoke(IpcChannels.LIST_LOCAL_VMS_CHANNEL),
         manageLocalVm: (input: Parameters<NonNullable<DesktopBridge["manageLocalVm"]>>[0]) =>
           ipcRenderer.invoke(IpcChannels.MANAGE_LOCAL_VM_CHANNEL, input),
