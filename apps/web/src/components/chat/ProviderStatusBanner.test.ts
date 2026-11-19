@@ -5,6 +5,7 @@ import {
   getProviderStatusBannerKey,
   getProviderStatusDismissalKey,
   getProviderStatusMessage,
+  hasProviderSetup,
   isProviderStatusBannerDismissedForSession,
   shouldShowProviderStatusBanner,
 } from "./ProviderStatusBanner";
@@ -28,6 +29,17 @@ const provider: ServerProvider = {
     recommendedRange: null,
   },
 };
+
+it.each(["codex", "claudeAgent"])("offers local VM setup for a signed-out %s CLI", (driver) => {
+  const signedOut = {
+    ...provider,
+    driver: ProviderDriverKind.make(driver),
+    auth: { status: "unauthenticated" as const },
+  };
+  expect(hasProviderSetup(signedOut, true)).toBe(true);
+  expect(hasProviderSetup(signedOut, false)).toBe(false);
+  expect(hasProviderSetup({ ...signedOut, enabled: false }, true)).toBe(false);
+});
 
 function shownAfterDismissing(dismissed: ServerProvider, shown: ServerProvider): boolean {
   return shouldShowProviderStatusBanner(

@@ -68,6 +68,7 @@ export function resolveOnboardingProviderLoginCommand(
   provider: ServerProvider,
   settings: ServerSettings,
   platform: ExecutionEnvironmentPlatformOs,
+  options?: { readonly headless?: boolean },
 ): string {
   const instance = settings.providerInstances[provider.instanceId];
 
@@ -80,7 +81,8 @@ export function resolveOnboardingProviderLoginCommand(
   if (provider.driver === "codex") {
     const config = decodeCodexSettings(instance?.config ?? {});
     const binaryPath = Option.isSome(config) ? config.value.binaryPath : "codex";
-    return `${quoteProviderBinary(binaryPath, "codex", platform)} login`;
+    const login = options?.headless ? "login --device-auth" : "login";
+    return `${quoteProviderBinary(binaryPath, "codex", platform)} ${login}`;
   }
 
   return provider.driver;

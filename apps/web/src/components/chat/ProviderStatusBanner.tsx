@@ -13,6 +13,7 @@ import { m, type MessageResolver } from "../../i18n/messages";
 import { formatProviderDriverKindLabel } from "../../providerModels";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { serverEnvironment } from "../../state/server";
+import { useIsManagedLocalVm } from "../../state/environments";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { RefreshIcon } from "../ui/refresh-icon";
 
@@ -92,8 +93,12 @@ export function useProviderStatusBannerDismissed(bannerKey: string | null): bool
   );
 }
 
-export function hasProviderSetup(status: ServerProvider): boolean {
+export function hasProviderSetup(status: ServerProvider, localVm = false): boolean {
   return (
+    (localVm &&
+      status.enabled &&
+      (status.driver === "codex" || status.driver === "claudeAgent") &&
+      (!status.installed || status.auth.status === "unauthenticated")) ||
     status.driver === "antigravity" ||
     status.setup?.canAuthenticate === true ||
     status.setup?.canInstall === true
@@ -149,6 +154,7 @@ export const ProviderStatusBanner = memo(function ProviderStatusBanner({
 }) {
   const gt = useGT();
   const messages = useMessages();
+  const localVm = useIsManagedLocalVm(environmentId);
   const canRefresh = useAtomValue(serverEnvironment.refreshProviders.permissionAtom(environmentId));
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
     label: "Refresh provider status",
@@ -211,7 +217,7 @@ export const ProviderStatusBanner = memo(function ProviderStatusBanner({
               </TooltipPopup>
             </Tooltip>
             <div className="flex flex-wrap items-center justify-end gap-3">
-              {onOpenProviderSetup && hasProviderSetup(status) ? (
+              {onOpenProviderSetup && hasProviderSetup(status, localVm) ? (
                 <InlineButton onClick={() => onOpenProviderSetup(status.instanceId)}>
                   <T>Open provider setup</T>
                 </InlineButton>

@@ -1592,6 +1592,7 @@
   "890241f6fe076db8": "Pfad konnte nicht kopiert werden",
   "8fbc792d713668c1": "Jedes Modell startet in einem eigenen Worktree.",
   "97405c12100cb246": "Ausführen auf",
+  "0c4e2a9f5d725386": "Neue lokale VM",
   "44ad5a6f7fd4f644": "Ausführungskontext: {context}",
   "25ae6917f8121f5d": "Automatisch verteilen",
   "0835c108d19201de": "Ausführen auf",
@@ -2886,6 +2887,21 @@
   "521c00203391d6c1": "Dieser Commit ist nicht im Arbeitsbereich des Threads",
   "9f1b29c948772f0f": "Link öffnen",
   "6239ea7de7a7ae0a": "Pull-Request-Link kann nicht geöffnet werden",
+  "7016e03cb88f387f": "Wähle auf diesem Mac ein Projekt aus, um eine lokale VM zu starten.",
+  "5a0a0613d046925d": "Lokale VM wird gestartet",
+  "ad88afc3bf47b055": "Ein Checkout des ausgewählten Git-Commits wird vorbereitet.",
+  "23d29822edf10020": "Ein leerer Arbeitsbereich wird vorbereitet.",
+  "ff8757a07981b608": "Lokale VM konnte nicht gestoppt werden",
+  "8e20fd74a418e766": "Verbindung zur lokalen VM wird hergestellt",
+  "6d85466f7790ad42": "Lokale VM · {title} · {id}",
+  "72e9162b9c6c440e": "Lokale VM verbinden",
+  "b0d83cbbd982bc11": "Das Gastsystem konnte keine autorisierte T3-Verbindung herstellen. Versuche erneut, eine Verbindung herzustellen.",
+  "6ef0b4bad6919264": "Projekt in lokaler VM öffnen",
+  "4be98a150e643b4a": "Projektwerkzeuge überprüfen",
+  "ba355026d492c0d2": "Installation von {providers} in der VM fehlgeschlagen",
+  "cfc7e1d2df8159ce": "Öffne für diese VM Einstellungen → Anbieter, um die Installation erneut zu versuchen.",
+  "865bcbd4d1e35d22": "Lokale VM ist bereit",
+  "88e2b8b5b8bacfd9": "Dein Entwurf wurde während der Einrichtung geändert. Prüfe ihn und sende ihn, sobald du bereit bist.",
   "c8440b29bc95ca71": "Ungültiges Tastenkürzel.",
   "f9e2c203389660f8": "Keine Umgebung ausgewählt.",
   "372f4d4a1c650763": "Diese Verbindung kann den Ressourcenmonitor nicht neu starten.",
@@ -4024,6 +4040,15 @@
     }
   ],
   "e58a1d884fa1d8f2": "Thread-Details",
+  "43c5fbd02c6f330a": "Weniger anzeigen",
+  "de45b075b016cb14": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " weitere anzeigen"
+  ],
   "02d9667ff2c8e0b8": "Issue {key}: {title}",
   "4276743ee60a3c62": "{count, plural, one {{count} Kommentar} other {{count} Kommentare}}",
   "42f634397f3960aa": "In Thread-Details anzeigen",
@@ -4063,15 +4088,6 @@
   ],
   "159ddd0d146a0f22": "Beobachtet: Der Agent wird geweckt, wenn Checks fertig sind, jemand kommentiert oder der Branch Konflikte hat. Klicke zum Beenden.",
   "1cbc8b5db51b4c77": "Mergen",
-  "43c5fbd02c6f330a": "Weniger anzeigen",
-  "de45b075b016cb14": [
-    {
-      "i": 1,
-      "k": "_gt_value_1",
-      "v": "v"
-    },
-    " weitere anzeigen"
-  ],
   "a3d040c4ef4fc6e9": "Über dem Tempo",
   "b16fdf56b16d99c9": "Im Tempo",
   "90f977e97ae8b6c6": "Unter dem Tempo",
@@ -4086,6 +4102,7 @@
   "66be4fb43249bbd2": "{used} von {max} Tokens",
   "ee3ae58c8b38a425": "{left} % übrig",
   "ebb26f93fb83a71b": "{label}: {left} % übrig",
+  "1b16346722b65812": "{timeLeft} % des Zeitfensters übrig",
   "728c6cc1431e76c8": "Wird in {duration} zurückgesetzt · {time}",
   "e16b0b9b490c8bc7": "{label}: {value}",
   "ba67d0a9ff5dabf0": "Die Zwischenablage-API ist beim Kopieren der Admin-Anfrage nicht verfügbar.",
@@ -4675,6 +4692,10 @@
   "06cdf54d45b0a187": "Hintergrundaufgabe fehlgeschlagen",
   "d769a69cec09af0b": "Thread konnte nicht gestartet werden",
   "4c13b543b99e5fac": "Entwurf öffnen",
+  "8ffb279a629c5429": "Lokale VM konnte nicht vorbereitet werden",
+  "09c2ae92c0ac7169": "Anbieter in der lokalen VM einrichten",
+  "9e9330c8fa52531c": "Deine erste Nachricht ist gespeichert. Kehre nach der Einrichtung zu diesem Entwurf zurück, um sie zu senden.",
+  "a3a558246e0aa430": "Anbieter öffnen",
   "850da199488a3ccb": "Abgelegte Rechner können nicht in eine Antwort",
   "2f011c299e8b8542": "Stelle diesen Prompt wieder her, nachdem die Frage des Agenten beantwortet ist.",
   "93e1adec217df51c": "Abgelegte Dateien gehören zu einer anderen Umgebung",
@@ -5988,10 +6009,6 @@
   "c747696796f64468": "T3 Connect ist aktiv, aber die App kann diesen Computer nicht erreichen.",
   "96557a906f6167b9": "Angemeldet. Gib diesen Computer frei, damit die App ihn erreichen kann.",
   "a8c7bd8349214c14": "Codex-Einrichtung konnte nicht gespeichert werden",
-  "4c180d45134b7da4": "Prüfe den Befehl und drücke dann Enter, um ihn auszuführen.",
-  "728b7fa1184ea9c8": "Das Einrichtungsterminal konnte nicht geöffnet werden.",
-  "8769d29d8434e535": "Befehl wird vorbereitet...",
-  "f3889aa139ecefa7": "{agent} installieren",
   "b79e42281b0acc9e": "{count, plural, one {{count} Thread importiert.} other {{count} Threads importiert.}}",
   "686dd0744640be73": "{count, plural, one {{count} Thread konnte nicht importiert werden.} other {{count} Threads konnten nicht importiert werden.}}",
   "ce247a620407cec4": "{count, plural, one {{count} Thread importiert. Ein Teil des Thread-Verlaufs konnte nicht importiert werden.} other {{count} Threads importiert. Ein Teil des Thread-Verlaufs konnte nicht importiert werden.}}",
@@ -6073,21 +6090,6 @@
   "b625d6ba3be34a56": "Melde dich hier bei T3 Connect an und dann in der App mit demselben Konto.",
   "2eb756ce7da7d95d": "Bereit",
   "fc05a3512bf05489": "Wird geprüft…",
-  "cade8b9f59f4b690": [
-    "Führe",
-    " ",
-    {
-      "t": "code",
-      "i": 1,
-      "c": {
-        "i": 2,
-        "k": "_gt_value_2",
-        "v": "v"
-      }
-    },
-    " ",
-    "in diesem Terminal aus."
-  ],
   "9d9b9624c7bd95df": "Andere Ordner",
   "1eb8f3d4695033fb": [
     "Zu ",
@@ -8670,6 +8672,42 @@
   "06ed78c51947fdb7": "T3 Code startet neu und führt wieder einen Server auf diesem Computer aus.",
   "5741e027bc5d5e4c": "Neu starten und ausschalten",
   "e09686bd65886c10": "Neu starten und einschalten",
+  "5d9cea48ac841200": "Claude-Konto",
+  "c54508bcabbb81cc": "Aktiviere diesen Anbieter, um ihn in der VM einzurichten.",
+  "556615b6147451b4": "Über dein Abo auf dem Mac verbunden.",
+  "53c0980f793ad392": "Prüfe die Abofreigabe auf deinem Mac unter Einstellungen → Umgebungen → Lokale VMs.",
+  "1e041f41872ef998": "Auf dieser VM angemeldet.",
+  "09d09790b93bc793": "Zum Einrichten dieses Anbieters in der VM ist Terminalzugriff erforderlich.",
+  "bfca54587dca65b7": "Öffne ein Terminal in dieser VM, um dein Konto zu verbinden.",
+  "76c63dc262165940": "Auf VM anmelden",
+  "9b4f63b069089777": "Auf VM installieren",
+  "a133b133ba39c012": "Die lokale VM für {title} dauerhaft löschen? Dadurch werden ihre Festplatte, ihr Gesprächsverlauf und alle nicht exportierten Arbeiten gelöscht.",
+  "66dd68a31a158d46": "Aktion für lokale VM fehlgeschlagen",
+  "6a1760294d9d51f3": "Lokale VMs",
+  "0f1392bed2c4985c": "Meine Mac-Abos verwenden",
+  "6fb240a980fac03d": "Verwende die ChatGPT-Anmeldung und das Claude-Einrichtungstoken deines Mac in den lokalen VMs von T3. Lass diese App dabei geöffnet.",
+  "f46850a0efc266b2": "Claude-Einrichtungstoken",
+  "8286681e120ea9fe": "Im Schlüsselbund deines Mac gespeichert. Ersetze das Token hier, wenn es abläuft.",
+  "6b15b1d2abeea85d": "Token ersetzen",
+  "02ea19bd05e02fc9": "Token speichern",
+  "c0880972863c3a2b": "Git auf dem Mac verbunden",
+  "dcd78fba3b8987a9": "Mac-Abos verbunden",
+  "5b9b5e0318850ed0": "Mac-Git für das Projekt in {title} verwenden",
+  "614e5ad58a795fb5": "Stoppen",
+  "4cbc7c43dd33c363": "Fortsetzen",
+  "80b4c23536e1ca8d": [
+    "Führe ",
+    {
+      "t": "code",
+      "i": 1,
+      "c": "claude setup-token"
+    },
+    " im Terminal auf diesem Mac aus und speichere das Token hier einmal für alle lokalen VMs."
+  ],
+  "111a44209dc6e701": "Entfernen",
+  "6bc82694ee1b3f7b": "Verbindung erneut versuchen",
+  "ceb2bc36c3202366": "Mac-Git für dieses Projekt verwenden",
+  "aba29e77e52bca46": "Löschen",
   "b8c82ba62b34f0e4": "Mikrofone, bevorzugte zuerst",
   "9fe08946d6dbd618": "Gespeichertes Mikrofon",
   "8101bb8e3c7427bf": "{name} nach oben verschieben",
@@ -8943,6 +8981,25 @@
   ],
   "a11d2816a2b3106c": "Anmeldeterminal wird geladen…",
   "b2f7638eb3def111": "Falls die abschließende localhost-Seite nicht lädt, füge hier ihre vollständige URL ein.",
+  "4c180d45134b7da4": "Prüfe den Befehl und drücke dann Enter, um ihn auszuführen.",
+  "728b7fa1184ea9c8": "Das Einrichtungsterminal konnte nicht geöffnet werden.",
+  "8769d29d8434e535": "Befehl wird vorbereitet...",
+  "b80c344765180a69": "Claude Code einrichten",
+  "cade8b9f59f4b690": [
+    "Führe",
+    " ",
+    {
+      "t": "code",
+      "i": 1,
+      "c": {
+        "i": 2,
+        "k": "_gt_value_2",
+        "v": "v"
+      }
+    },
+    " ",
+    "in diesem Terminal aus."
+  ],
   "c749e91a6fec5cf9": "{field} leeren",
   "95e568730bdde867": "Variablen",
   "134c2eb478dce8d9": "API-Schlüssel, Basis-URLs und andere CLI-Einstellungen pro Instanz.",
@@ -9608,7 +9665,6 @@
   ],
   "13d4f258e93f1dc1": "Verbinde eine Umgebung, um die Geheimnisanbieter zu verwalten, aus denen ihre Anbietervariablen lesen.",
   "88466f5a03be2419": "Umgebungsweite Einstellung. Wähle eine Umgebung, um sie zu ändern.",
-  "111a44209dc6e701": "Entfernen",
   "a3538ba5ca802bd7": [
     {
       "i": 1,
@@ -11860,7 +11916,6 @@
   "0bd938825ffcf992": "+{percent} % des Kontingents",
   "09c0e00d7fb55402": "Reset-Guthaben wird verwendet…",
   "4df3ff1be768a7ab": "{name}: {remaining} % übrig",
-  "1b16346722b65812": "{timeLeft} % des Zeitfensters übrig",
   "7aaaff1c6484f25c": "Segment",
   "8bcab2ef61de6518": "0-$-Limit",
   "a16b48709357a5a7": "Nutzung verwalten",

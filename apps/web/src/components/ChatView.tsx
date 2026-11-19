@@ -1238,6 +1238,12 @@ export default function ChatView(props: ChatViewProps) {
     activeProject,
     activeProjectIsScratch && draftId !== null,
   );
+  const canCreateLocalVm = Boolean(
+    draftId &&
+    !draftThread?.promotedTo &&
+    window.desktopBridge?.prepareLocalVm &&
+    primaryEnvironment?.environmentId === activeProject?.environmentId,
+  );
   const hasMultipleEnvironments = logicalProjectEnvironments.length > 1;
   const canAutoBalanceEnvironments = hasMultipleEnvironments && !activeProjectIsScratch;
   const activeEnvironmentOption =
@@ -1246,7 +1252,7 @@ export default function ChatView(props: ChatViewProps) {
     ) ?? null;
   const showComposerEnvironmentIndicator = shouldShowEnvironmentIndicator({
     activeEnvironment: activeEnvironmentOption,
-    canPickEnvironment: hasMultipleEnvironments,
+    canPickEnvironment: hasMultipleEnvironments || canCreateLocalVm,
   });
 
   const pullRequestLinking = usePullRequestLinking(environmentId);
@@ -1323,7 +1329,10 @@ export default function ChatView(props: ChatViewProps) {
   // rule out a started thread: one whose machine is offline never loads its
   // messages, so it would otherwise be offered a machine picker that does nothing.
   const canChangeEnvironment =
-    hasMultipleEnvironments && !envLocked && draftId !== null && !draftThread?.promotedTo;
+    (hasMultipleEnvironments || canCreateLocalVm) &&
+    !envLocked &&
+    draftId !== null &&
+    !draftThread?.promotedTo;
 
   const loadBalancingSettings = useClientSettings((settings) => ({
     loadBalancingEnabled: settings.loadBalancingEnabled,
@@ -1335,6 +1344,7 @@ export default function ChatView(props: ChatViewProps) {
     !envLocked &&
     canAutoBalanceEnvironments &&
     loadBalancingSettings.loadBalancingEnabled &&
+    draftThread?.environmentSelection !== "local-vm" &&
     draftThread?.environmentSelection !== "manual" &&
     (!composerHasAttachments || Boolean(draftThread?.loadBalancedEnvironmentId)) &&
     (!draftThread?.branch || draftThread.environmentSelection === "auto") &&

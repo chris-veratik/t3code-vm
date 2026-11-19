@@ -394,6 +394,57 @@ export const DesktopEnvironmentBootstrapSchema = Schema.Struct({
   bootstrapToken: Schema.optionalKey(Schema.String),
 });
 
+export const LocalVmLaunchId = Schema.String.check(
+  Schema.isPattern(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/),
+);
+export const LocalVmLaunchSchema = Schema.Struct({
+  id: LocalVmLaunchId,
+  title: TrimmedNonEmptyString,
+  cwd: Schema.NullOr(TrimmedNonEmptyString),
+  revision: Schema.NullOr(TrimmedNonEmptyString),
+});
+export type LocalVmLaunch = typeof LocalVmLaunchSchema.Type;
+export const LocalVmInfoSchema = Schema.Struct({
+  projectGit: Schema.optionalKey(
+    Schema.Struct({
+      enabled: Schema.Boolean,
+      connected: Schema.Boolean,
+      problem: Schema.NullOr(Schema.String),
+    }),
+  ),
+  id: LocalVmLaunchId,
+  title: Schema.String,
+  status: Schema.String,
+  environmentId: Schema.NullOr(EnvironmentId),
+});
+export const LocalVmSubscriptionActionSchema = Schema.Literals([
+  "enable",
+  "disable",
+  "configureClaude",
+  "forgetClaude",
+  "retry",
+]);
+export type LocalVmSubscriptionAction = typeof LocalVmSubscriptionActionSchema.Type;
+export const LocalVmSubscriptionStateSchema = Schema.Struct({
+  enabled: Schema.Boolean,
+  claudeConfigured: Schema.Boolean,
+  connected: Schema.Array(LocalVmLaunchId),
+  problems: Schema.Record(Schema.String, Schema.String),
+  inventoryProblem: Schema.NullOr(Schema.String),
+});
+export type LocalVmSubscriptionState = typeof LocalVmSubscriptionStateSchema.Type;
+export const LocalVmWorkspaceSchema = Schema.Struct({
+  environmentId: EnvironmentId,
+  alias: Schema.String,
+  workspaceRoot: Schema.String,
+  projectToolsWarning: Schema.optionalKey(Schema.String),
+  uninstalledProviders: Schema.optionalKey(Schema.Array(Schema.Literals(["codex", "claude"]))),
+});
+export const LocalVmActionSchema = Schema.Struct({
+  id: LocalVmLaunchId,
+  action: Schema.Literals(["start", "stop", "delete", "enableProjectGit", "disableProjectGit"]),
+});
+
 export const DesktopSshEnvironmentTargetSchema = Schema.Struct({
   alias: Schema.String,
   hostname: Schema.String,
@@ -1106,6 +1157,13 @@ export interface DesktopBridge {
   setClientSettings: (settings: ClientSettings) => Promise<void>;
   getConnectionCatalog: () => Promise<string | null>;
   setConnectionCatalog: (catalog: string) => Promise<boolean>;
+  getLocalVmSubscriptions?: () => Promise<LocalVmSubscriptionState>;
+  updateLocalVmSubscriptions?: (
+    action: LocalVmSubscriptionAction,
+  ) => Promise<LocalVmSubscriptionState>;
+  prepareLocalVm?: (launch: LocalVmLaunch) => Promise<typeof LocalVmWorkspaceSchema.Type>;
+  listLocalVms?: () => Promise<ReadonlyArray<typeof LocalVmInfoSchema.Type>>;
+  manageLocalVm?: (input: typeof LocalVmActionSchema.Type) => Promise<void>;
   discoverSshHosts: () => Promise<readonly DesktopDiscoveredSshHost[]>;
   resolveSshHost: (alias: string) => Promise<DesktopSshEnvironmentTarget>;
   requestSnapShotPermissions: (includeAccessibility: boolean) => Promise<void>;

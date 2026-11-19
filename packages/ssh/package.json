@@ -22,6 +22,10 @@
     "./tunnel": {
       "types": "./src/tunnel.ts",
       "import": "./src/tunnel.ts"
+    },
+    "./localVm": {
+      "types": "./src/localVm.ts",
+      "import": "./src/localVm.ts"
     }
   },
   "scripts": {

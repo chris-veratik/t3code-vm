@@ -1,6 +1,7 @@
 import { errorDisplayMessage, thrownErrorMessage } from "@t3tools/client-runtime/errors";
 import { m as resolveMessage } from "~/i18n/messages";
 import { managedCapabilityDenial } from "@t3tools/client-runtime/contract-labels";
+import { LocalVmSettings } from "./LocalVmSettings";
 import { SessionPermissions } from "./SessionPermissions";
 import { useSearch } from "@tanstack/react-router";
 import { ChevronRightIcon, EllipsisIcon } from "lucide-react";
@@ -1778,6 +1779,7 @@ function ConnectionsSettingsContent({
           <LocalEnvironmentSetting />
         </SettingsSection>
       ) : null}
+      {desktopBridge?.listLocalVms && <LocalVmSettings />}
       <SettingsSection
         {...searchableSetting("remote-environments")}
         title={gt("Environments")}

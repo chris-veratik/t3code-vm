@@ -1593,6 +1593,7 @@
   "890241f6fe076db8": "Det gick inte att kopiera sökvägen",
   "8fbc792d713668c1": "Varje modell startar i sin egen worktree.",
   "97405c12100cb246": "Kör på",
+  "0c4e2a9f5d725386": "Ny lokal VM",
   "44ad5a6f7fd4f644": "Körkontext: {context}",
   "25ae6917f8121f5d": "Balansera automatiskt",
   "0835c108d19201de": "Kör på",
@@ -2885,6 +2886,21 @@
   "521c00203391d6c1": "Den här commiten finns inte i trådens arbetsyta",
   "9f1b29c948772f0f": "Öppna länk",
   "6239ea7de7a7ae0a": "Det gick inte att öppna länken till pull requesten",
+  "7016e03cb88f387f": "Välj ett projekt på denna Mac för att starta en lokal VM.",
+  "5a0a0613d046925d": "Startar lokal VM",
+  "ad88afc3bf47b055": "Förbereder en arbetskopia av vald Git-commit.",
+  "23d29822edf10020": "Förbereder en tom arbetsyta.",
+  "ff8757a07981b608": "Kunde inte stoppa den lokala VM:n",
+  "8e20fd74a418e766": "Ansluter till lokal VM",
+  "6d85466f7790ad42": "Lokal VM · {title} · {id}",
+  "72e9162b9c6c440e": "Anslut lokal VM",
+  "b0d83cbbd982bc11": "Gästsystemet kunde inte upprätta en auktoriserad T3-anslutning. Försök ansluta igen.",
+  "6ef0b4bad6919264": "Öppna projekt i lokal VM",
+  "4be98a150e643b4a": "Kontrollera projektets verktyg",
+  "ba355026d492c0d2": "Kunde inte installera {providers} i VM:n",
+  "cfc7e1d2df8159ce": "Öppna Inställningar → Leverantörer för denna VM och försök installera igen.",
+  "865bcbd4d1e35d22": "Lokal VM är redo",
+  "88e2b8b5b8bacfd9": "Utkastet ändrades under installationen. Granska det och skicka när du är redo.",
   "c8440b29bc95ca71": "Ogiltigt kortkommando.",
   "f9e2c203389660f8": "Ingen miljö är vald.",
   "372f4d4a1c650763": "Den här anslutningen kan inte starta om resursövervakaren.",
@@ -4021,6 +4037,16 @@
     }
   ],
   "e58a1d884fa1d8f2": "Tråddetaljer",
+  "43c5fbd02c6f330a": "Visa mindre",
+  "de45b075b016cb14": [
+    "Visa ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " till"
+  ],
   "02d9667ff2c8e0b8": "Ärende {key}: {title}",
   "4276743ee60a3c62": "{count, plural, one {{count} kommentar} other {{count} kommentarer}}",
   "42f634397f3960aa": "Visa i tråddetaljer",
@@ -4060,16 +4086,6 @@
   ],
   "159ddd0d146a0f22": "Bevakar: agenten vaknar när kontrollerna är klara, någon kommenterar eller grenen får konflikter. Klicka för att sluta.",
   "1cbc8b5db51b4c77": "Merga",
-  "43c5fbd02c6f330a": "Visa mindre",
-  "de45b075b016cb14": [
-    "Visa ",
-    {
-      "i": 1,
-      "k": "_gt_value_1",
-      "v": "v"
-    },
-    " till"
-  ],
   "a3d040c4ef4fc6e9": "Före takten",
   "b16fdf56b16d99c9": "I takt",
   "90f977e97ae8b6c6": "Under takten",
@@ -4084,6 +4100,7 @@
   "66be4fb43249bbd2": "{used} av {max} token",
   "ee3ae58c8b38a425": "{left} % kvar",
   "ebb26f93fb83a71b": "{label}: {left} % kvar",
+  "1b16346722b65812": "{timeLeft} % av fönstret kvar",
   "728c6cc1431e76c8": "Återställs om {duration} · {time}",
   "e16b0b9b490c8bc7": "{label}: {value}",
   "ba67d0a9ff5dabf0": "Urklipps-API:t är inte tillgängligt vid kopiering av administratörsbegäran.",
@@ -4673,6 +4690,10 @@
   "06cdf54d45b0a187": "Bakgrundsuppgiften misslyckades",
   "d769a69cec09af0b": "Kunde inte starta tråden",
   "4c13b543b99e5fac": "Öppna utkast",
+  "8ffb279a629c5429": "Kunde inte förbereda lokal VM",
+  "09c2ae92c0ac7169": "Konfigurera en leverantör i den lokala VM:n",
+  "9e9330c8fa52531c": "Ditt första meddelande har sparats. Gå tillbaka till utkastet efter konfigurationen för att skicka det.",
+  "a3a558246e0aa430": "Öppna leverantörer",
   "850da199488a3ccb": "Undanlagda datorer kan inte ingå i ett svar",
   "2f011c299e8b8542": "Återställ den här prompten när agentens fråga har besvarats.",
   "93e1adec217df51c": "Undanlagda filer tillhör en annan miljö",
@@ -5988,10 +6009,6 @@
   "c747696796f64468": "T3 Connect är på, men appen kan inte nå den här datorn.",
   "96557a906f6167b9": "Inloggad. Dela den här datorn så att appen kan nå den.",
   "a8c7bd8349214c14": "Kunde inte spara Codex-konfigurationen",
-  "4c180d45134b7da4": "Granska kommandot och tryck sedan på Enter för att köra det.",
-  "728b7fa1184ea9c8": "Kunde inte öppna konfigurationsterminalen.",
-  "8769d29d8434e535": "Förbereder kommando...",
-  "f3889aa139ecefa7": "Installera {agent}",
   "b79e42281b0acc9e": "{count, plural, one {Importerade {count} tråd.} other {Importerade {count} trådar.}}",
   "686dd0744640be73": "{count, plural, one {{count} tråd kunde inte importeras.} other {{count} trådar kunde inte importeras.}}",
   "ce247a620407cec4": "{count, plural, one {Importerade {count} tråd. En del trådhistorik kunde inte importeras.} other {Importerade {count} trådar. En del trådhistorik kunde inte importeras.}}",
@@ -6076,21 +6093,6 @@
   "b625d6ba3be34a56": "Logga in på T3 Connect här och sedan i appen med samma konto.",
   "2eb756ce7da7d95d": "Redo",
   "fc05a3512bf05489": "Kontrollerar…",
-  "cade8b9f59f4b690": [
-    "Kör",
-    " ",
-    {
-      "t": "code",
-      "i": 1,
-      "c": {
-        "i": 2,
-        "k": "_gt_value_2",
-        "v": "v"
-      }
-    },
-    " ",
-    "i den här terminalen."
-  ],
   "9d9b9624c7bd95df": "Andra mappar",
   "1eb8f3d4695033fb": [
     "Tillagd i ",
@@ -8676,6 +8678,42 @@
   "06ed78c51947fdb7": "T3 Code startar om och börjar köra en server på den här datorn igen.",
   "5741e027bc5d5e4c": "Starta om och stäng av",
   "e09686bd65886c10": "Starta om och aktivera",
+  "5d9cea48ac841200": "Claude-konto",
+  "c54508bcabbb81cc": "Aktivera leverantören för att konfigurera den i VM:n.",
+  "556615b6147451b4": "Ansluten via abonnemanget på din Mac.",
+  "53c0980f793ad392": "Kontrollera abonnemangsdelningen under Inställningar → Miljöer → Lokala VM:ar på din Mac.",
+  "1e041f41872ef998": "Inloggad på denna VM.",
+  "09d09790b93bc793": "Terminalåtkomst krävs för att konfigurera leverantören i VM:n.",
+  "bfca54587dca65b7": "Öppna en terminal i denna VM för att ansluta ditt konto.",
+  "76c63dc262165940": "Logga in på VM:n",
+  "9b4f63b069089777": "Installera i VM:n",
+  "a133b133ba39c012": "Vill du ta bort den lokala VM:n för {title} permanent? Dess disk, konversationshistorik och arbete som inte har exporterats tas bort.",
+  "66dd68a31a158d46": "Åtgärden för den lokala VM:n misslyckades",
+  "6a1760294d9d51f3": "Lokala VM:ar",
+  "0f1392bed2c4985c": "Använd mina Mac-abonnemang",
+  "6fb240a980fac03d": "Använd din Macs ChatGPT-inloggning och konfigurationstoken för Claude i T3:s lokala VM:ar. Låt appen vara öppen medan du använder dem.",
+  "f46850a0efc266b2": "Konfigurationstoken för Claude",
+  "8286681e120ea9fe": "Sparad i nyckelringen på din Mac. Byt ut den här när den löper ut.",
+  "6b15b1d2abeea85d": "Byt ut token",
+  "02ea19bd05e02fc9": "Spara token",
+  "c0880972863c3a2b": "Ansluten till Git på Mac",
+  "dcd78fba3b8987a9": "Mac-abonnemang anslutna",
+  "5b9b5e0318850ed0": "Använd Git på Mac för projektet i {title}",
+  "614e5ad58a795fb5": "Stoppa",
+  "4cbc7c43dd33c363": "Återuppta",
+  "80b4c23536e1ca8d": [
+    "Kör ",
+    {
+      "t": "code",
+      "i": 1,
+      "c": "claude setup-token"
+    },
+    " i Terminal på denna Mac och spara sedan token här en gång för alla lokala VM:ar."
+  ],
+  "111a44209dc6e701": "Ta bort",
+  "6bc82694ee1b3f7b": "Försök ansluta igen",
+  "ceb2bc36c3202366": "Använd Git på Mac för detta projekt",
+  "aba29e77e52bca46": "Ta bort",
   "b8c82ba62b34f0e4": "Mikrofoner, föredragen först",
   "9fe08946d6dbd618": "Sparad mikrofon",
   "8101bb8e3c7427bf": "Flytta upp {name}",
@@ -8949,6 +8987,25 @@
   ],
   "a11d2816a2b3106c": "Läser in inloggningsterminalen…",
   "b2f7638eb3def111": "Om den sista localhost-sidan inte laddas klistrar du in dess fullständiga URL här.",
+  "4c180d45134b7da4": "Granska kommandot och tryck sedan på Enter för att köra det.",
+  "728b7fa1184ea9c8": "Kunde inte öppna konfigurationsterminalen.",
+  "8769d29d8434e535": "Förbereder kommando...",
+  "b80c344765180a69": "Konfigurera Claude Code",
+  "cade8b9f59f4b690": [
+    "Kör",
+    " ",
+    {
+      "t": "code",
+      "i": 1,
+      "c": {
+        "i": 2,
+        "k": "_gt_value_2",
+        "v": "v"
+      }
+    },
+    " ",
+    "i den här terminalen."
+  ],
   "c749e91a6fec5cf9": "Rensa {field}",
   "95e568730bdde867": "Variabler",
   "134c2eb478dce8d9": "API-nycklar, bas-URL:er och andra CLI-inställningar per instans.",
@@ -9614,7 +9671,6 @@
   ],
   "13d4f258e93f1dc1": "Anslut en miljö för att hantera de hemlighetsleverantörer som dess leverantörsvariabler läser från.",
   "88466f5a03be2419": "Inställning för hela miljön. Välj en miljö för att ändra den.",
-  "111a44209dc6e701": "Ta bort",
   "a3538ba5ca802bd7": [
     "Ta bort ",
     {
@@ -11866,7 +11922,6 @@
   "0bd938825ffcf992": "+{percent} % av poolen",
   "09c0e00d7fb55402": "Använder återställningskredit…",
   "4df3ff1be768a7ab": "{name}: {remaining} % kvar",
-  "1b16346722b65812": "{timeLeft} % av fönstret kvar",
   "7aaaff1c6484f25c": "Segment",
   "8bcab2ef61de6518": "Tak på 0 $",
   "a16b48709357a5a7": "Hantera användning",

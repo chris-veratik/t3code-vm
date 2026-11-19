@@ -22,6 +22,8 @@ import {
 } from "./ui/select";
 
 interface BranchToolbarEnvironmentSelectorProps {
+  localVmSelected: boolean;
+  onLocalVm?: (() => void) | undefined;
   autoEnvironmentLabel?: string | undefined;
   onAutoEnvironment?: (() => void) | undefined;
   envLocked: boolean;
@@ -32,11 +34,14 @@ interface BranchToolbarEnvironmentSelectorProps {
 }
 
 // Action values cannot collide with server-minted environment IDs.
+const LOCAL_VM_VALUE = "action:local-vm";
 const AUTO_VALUE = "action:auto";
 const ADD_MACHINE_VALUE = "action:add-machine";
 const environmentValue = (id: EnvironmentId) => `env:${id}`;
 
 export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvironmentSelector({
+  localVmSelected,
+  onLocalVm,
   autoEnvironmentLabel,
   onAutoEnvironment,
   envLocked,
@@ -55,6 +60,7 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
     availableEnvironments.find((env) => env.environmentId === environmentId) ?? null;
 
   const environmentItems = [
+    ...(onLocalVm ? [{ value: LOCAL_VM_VALUE, label: gt("New local VM") }] : []),
     ...(onAutoEnvironment
       ? [{ value: AUTO_VALUE, label: autoEnvironmentLabel ?? gt("Auto balance") }]
       : []),
@@ -91,9 +97,17 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
   return (
     <Select
       modal={false}
-      value={autoEnvironmentLabel ? AUTO_VALUE : environmentValue(environmentId)}
+      value={
+        localVmSelected
+          ? LOCAL_VM_VALUE
+          : autoEnvironmentLabel
+            ? AUTO_VALUE
+            : environmentValue(environmentId)
+      }
       onValueChange={(value) => {
-        if (value === ADD_MACHINE_VALUE) {
+        if (value === LOCAL_VM_VALUE) {
+          onLocalVm?.();
+        } else if (value === ADD_MACHINE_VALUE) {
           onAddToMachine?.();
         } else if (value === AUTO_VALUE) {
           onAutoEnvironment?.();
@@ -162,6 +176,7 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
               </span>
             </SelectItem>
           ))}
+          {onLocalVm && <SelectItem value={LOCAL_VM_VALUE}>{gt("New local VM")}</SelectItem>}
           {onAddToMachine ? (
             <SelectItem value={ADD_MACHINE_VALUE}>
               <span className={ADD_TO_MACHINE_LABEL_CLASS}>

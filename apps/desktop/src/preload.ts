@@ -185,6 +185,21 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   getConnectionCatalog: () => ipcRenderer.invoke(IpcChannels.GET_CONNECTION_CATALOG_CHANNEL),
   setConnectionCatalog: (catalog) =>
     ipcRenderer.invoke(IpcChannels.SET_CONNECTION_CATALOG_CHANNEL, catalog),
+  // oxlint-disable-next-line t3code/no-global-process-runtime -- the sandboxed preload exposes native VM support only for the architecture Electron is executing.
+  ...(clientPlatform === "darwin" && process.arch === "arm64"
+    ? {
+        prepareLocalVm: (launch: Parameters<NonNullable<DesktopBridge["prepareLocalVm"]>>[0]) =>
+          ipcRenderer.invoke(IpcChannels.PREPARE_LOCAL_VM_CHANNEL, launch),
+        getLocalVmSubscriptions: () =>
+          ipcRenderer.invoke(IpcChannels.GET_LOCAL_VM_SUBSCRIPTIONS_CHANNEL),
+        updateLocalVmSubscriptions: (
+          action: Parameters<NonNullable<DesktopBridge["updateLocalVmSubscriptions"]>>[0],
+        ) => ipcRenderer.invoke(IpcChannels.UPDATE_LOCAL_VM_SUBSCRIPTIONS_CHANNEL, action),
+        listLocalVms: () => ipcRenderer.invoke(IpcChannels.LIST_LOCAL_VMS_CHANNEL),
+        manageLocalVm: (input: Parameters<NonNullable<DesktopBridge["manageLocalVm"]>>[0]) =>
+          ipcRenderer.invoke(IpcChannels.MANAGE_LOCAL_VM_CHANNEL, input),
+      }
+    : {}),
   discoverSshHosts: () => ipcRenderer.invoke(IpcChannels.DISCOVER_SSH_HOSTS_CHANNEL),
   resolveSshHost: (alias) => ipcRenderer.invoke(IpcChannels.RESOLVE_SSH_HOST_CHANNEL, alias),
   ensureSshEnvironment: async (target, options) =>

@@ -59,6 +59,7 @@ import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import { cn } from "../../lib/utils";
 import { resolveAppModelSelectionState } from "../../modelSelection";
 import {
+  isManagedLocalVmEnvironment,
   useEnvironments,
   usePrimaryEnvironmentId,
   type EnvironmentPresentation,
@@ -106,6 +107,7 @@ import { TextGeneratorsSettings } from "./TextGeneratorsSettings";
 import { UsageProviderSettings } from "./UsageProviderSettings";
 import { ProviderSetupSection, readAntigravityAuthMethod } from "./ProviderSetupSection";
 import { ProviderAuthenticationSection } from "./ProviderAuthenticationSection";
+import { LocalVmProviderSetup } from "./LocalVmProviderSetup";
 import { CodexSetupSection, CodexManagedRuntimeFields } from "./CodexSetupSection";
 import { readCodexSetupMode } from "./CodexSetupSection.logic";
 import { providerClients } from "./providerDriverMeta";
@@ -549,6 +551,7 @@ function AccessGatedProviderSettings({
     <EnvironmentProviderSettings
       environmentId={environment.environmentId}
       environmentLabel={environment.label}
+      localVm={isManagedLocalVmEnvironment(environment)}
       readOnly={access.kind === "read-only"}
       deviceTabs={deviceTabs}
       targetInstanceId={targetInstanceId}
@@ -563,6 +566,7 @@ const NO_FAVORITES: UnifiedSettings["favorites"] = [];
 export function EnvironmentProviderSettings({
   environmentId,
   environmentLabel,
+  localVm = false,
   readOnly = false,
   deviceTabs,
   targetInstanceId,
@@ -570,6 +574,7 @@ export function EnvironmentProviderSettings({
 }: {
   readonly environmentId: EnvironmentId;
   readonly environmentLabel: string;
+  readonly localVm?: boolean;
   readonly deviceTabs?: ReactNode;
   readonly targetInstanceId?: ProviderInstanceId | undefined;
   readonly projectIds?: readonly ProjectId[];
@@ -987,6 +992,7 @@ export function EnvironmentProviderSettings({
         key={row.instanceId}
         environmentId={environmentId}
         environmentLabel={environmentLabel}
+        localVm={localVm}
         instanceId={row.instanceId}
         driver={row.driver}
         explicitInstance={row.explicitInstance}
@@ -1290,6 +1296,7 @@ const NO_MODELS: ReadonlyArray<string> = [];
 function ProviderInstanceRow({
   environmentId,
   environmentLabel,
+  localVm,
   instanceId,
   driver,
   explicitInstance,
@@ -1310,6 +1317,7 @@ function ProviderInstanceRow({
 }: {
   readonly environmentId: EnvironmentId;
   readonly environmentLabel: string;
+  readonly localVm: boolean;
   readonly instanceId: ProviderInstanceId;
   readonly driver: ProviderDriverKind;
   readonly explicitInstance: ProviderInstanceConfig | undefined;
@@ -1442,6 +1450,17 @@ function ProviderInstanceRow({
             instanceId={instanceId}
             provider={liveProvider}
             readOnly={readOnly}
+          />
+        ) : mode === "editor" &&
+          !readOnly &&
+          localVm &&
+          liveProvider &&
+          (driver === "codex" || driver === "claudeAgent") ? (
+          <LocalVmProviderSetup
+            key={`${environmentId}:${instanceId}`}
+            environmentId={environmentId}
+            driver={driver === "codex" ? "codex" : "claudeAgent"}
+            provider={liveProvider}
           />
         ) : mode === "editor" &&
           !readOnly &&

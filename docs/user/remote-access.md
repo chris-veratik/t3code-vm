@@ -3,6 +3,63 @@
 Connect a phone, browser, or another desktop app to T3 Code running on a different
 machine. That machine must stay running and reachable while you work.
 
+## Start a local VM from New Thread
+
+On an Apple Silicon Mac with Lima installed (`brew install lima`), open a project in the
+desktop app and choose **New Thread → Run on → New local VM**. Press **Send** to create
+the VM. The first launch downloads Ubuntu, T3 Code, Codex and Claude Code. The guest
+uses two virtual CPUs, 4 GiB of memory and a 24 GiB virtual disk.
+
+A Git project starts at the selected local commit and keeps its project subdirectory.
+Commit any working changes you want in the VM before sending. A scratch thread starts
+in an empty directory. The checkout and terminal live inside the guest. A project that
+uses submodules or Git LFS needs its usual guest-side setup.
+
+For a project VM, T3 checks committed tool declarations in the selected directory and
+its parent directories up to the repository root. It installs declared runtimes and
+build tools before starting the first turn. It recognizes common language manifests,
+version files, mise and asdf declarations, and supported official Dev Container
+features. A scratch VM or a checkout without recognized declarations skips project
+tool installation. Install application dependencies with the project's usual command.
+Custom container images, lifecycle scripts and platform-specific SDKs need their
+usual setup inside the guest.
+
+To use your Mac's Git sign-in, open **Settings → Environments → Local VMs** and turn on
+**Use Mac Git for this project** beside a project VM. T3 remembers the choice for
+existing and future VMs opened from that project folder. Other folders in the same
+repository and linked worktrees each have their own choice. For a project at the root
+of the main checkout, you can turn sharing on before the first launch with
+`git config --local t3code.localVmGitAuth true`. Fetch, pull and
+push to `origin` use the Mac's HTTPS credential helper or SSH identity, including a
+separate push URL. Keep the desktop app open. Turn off the same switch to return to
+guest authentication. Other remotes, submodules and Git LFS authenticate separately.
+
+To use your Mac accounts in T3 Code, open **Settings → Environments → Local VMs**
+and turn on **Use my Mac subscriptions**. Running VMs connect immediately, stopped
+VMs connect when resumed, and new VMs inherit the setting. Keep the Mac app open.
+The default Codex provider uses your Mac’s Codex CLI ChatGPT sign-in. If needed,
+run `codex login` on the Mac. The Mac handles token refresh for all its VMs.
+
+For Claude, run `claude setup-token` in Terminal on the Mac. Choose **Save token**
+and paste it into the private Mac dialog. T3 stores it in your Mac Keychain and
+supplies it when the default Claude provider starts in a connected VM. This token
+gives the VM access to your Claude subscription. Use sharing with VMs you trust.
+Turn sharing off to restore each VM’s previous provider settings. Already running
+provider processes may continue with credentials they received earlier.
+
+To sign in separately in a VM, open **Settings → Providers**, select the **Local VM** and
+choose **Codex** or **Claude**. Choose **Sign in on VM**, then press **Enter** in
+the VM terminal. Open the link on your Mac and follow the provider’s instructions.
+For Codex, enable device-code login in your ChatGPT security settings if prompted.
+If Claude shows a login code in the browser, paste it into the VM terminal.
+Return to the same draft to continue the first send. Each VM keeps its own sign-in
+across stops and resumes.
+
+Open **Settings → Environments → Local VMs** to stop or resume a machine. Stop ends
+running processes and keeps the checkout, provider settings and chat history on the disk.
+Before choosing **Delete**, push your commits or export the files and chat history you
+want to keep. Managed VMs live under `~/.t3/lima` by default.
+
 ## T3 Connect
 
 T3 Connect makes an environment available to your other devices without setting

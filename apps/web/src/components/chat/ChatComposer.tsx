@@ -253,6 +253,7 @@ import { assistantCitationNavigation } from "../../lib/assistantCitationNavigati
 import { Button } from "../ui/button";
 import { useManagedPolicy } from "../../state/managedPolicy";
 import { hasProviderSetup } from "./ProviderStatusBanner";
+import { useIsManagedLocalVm } from "../../state/environments";
 import { type AppModelOption, getAppModelOptionsForInstance } from "../../modelSelection";
 import type { UnifiedSettings } from "@t3tools/contracts/settings";
 import { isVideoAttachment, type SessionPhase, type Thread } from "../../types";
@@ -915,14 +916,23 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     lockedInstanceId:
       activeThread?.runtime?.providerInstanceId ?? activeThreadModelSelection?.instanceId,
   });
+  // Before a VM is created, Send prepares the guest. Its provider capabilities arrive after pairing.
+  const preparingLocalVm = useComposerDraftStore(
+    (store) =>
+      typeof composerDraftTarget === "string" &&
+      store.getDraftSession(composerDraftTarget)?.environmentSelection === "local-vm",
+  );
   const noProviderAvailable =
-    selectedProviderEntry === undefined && multipleModelSelections === null;
+    !preparingLocalVm && selectedProviderEntry === undefined && multipleModelSelections === null;
   const providerCatalogPending = noProviderAvailable && !providerCatalogKnown;
   const showProviderUnavailable = noProviderAvailable && !providerCatalogPending;
+  const localVm = useIsManagedLocalVm(environmentId);
   const providerSetupInstanceId = noProviderAvailable
     ? (unavailableProviderInstanceId ??
       (lockedProvider === null
-        ? providerInstanceEntries.find((entry) => hasProviderSetup(entry.snapshot))?.instanceId
+        ? providerInstanceEntries.find(
+            (entry) => (!localVm || entry.enabled) && hasProviderSetup(entry.snapshot, localVm),
+          )?.instanceId
         : undefined))
     : undefined;
   // Called before the derivation below: a hook between it and its uses stops React Compiler
@@ -958,7 +968,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       ? attachmentBlockReason
       : (attachmentBlockReason ??
         runtimeModeCeilingDenial ??
-        (multipleModelSelections === null ? providerSendBlockReason : null)));
+        (!preparingLocalVm && multipleModelSelections === null ? providerSendBlockReason : null)));
   const isSendDisabled = sendDisabledReason !== null;
   const selectedProviderStatus = selectedProviderEntry?.snapshot ?? null;
   const selectedProviderSkills = selectedProviderStatus

@@ -1,6 +1,8 @@
 import { msg } from "gt-react";
 import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
 import { m } from "~/i18n/messages";
+import { hasExplicitComposerModelSelection } from "../../lib/chatThreadActions";
+import { prepareLocalVmDraft } from "../../lib/prepareLocalVmDraft";
 import { isClearComposerCommand, parseSideChatCommand } from "@t3tools/shared/composerTrigger";
 import { armFreshSession, disarmFreshSession, readFreshSessionArm } from "./freshSessionArms";
 import {
@@ -22,6 +24,8 @@ import { isUsageLimitsCommand } from "@t3tools/shared/usageLimits";
 import {
   AuthOrchestrationOperateScope,
   DEFAULT_MODEL,
+  CommandId,
+  MessageId,
   type EnvironmentId,
   type ModelSelection,
   type PreviewAnnotationPayload,
@@ -49,8 +53,8 @@ import {
   scopeThreadRef,
 } from "@t3tools/client-runtime/environment";
 import { createModelSelection } from "@t3tools/shared/model";
-import { type SetStateAction, useLayoutEffect, useRef } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { type SetStateAction, useEffect, useLayoutEffect, useRef } from "react";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import {
   isAtomCommandInterrupted,
   settlePromise,
@@ -76,6 +80,7 @@ import {
   restoreFailedDraftThread,
   checkoutPullRequestUrlToLink,
   composerDraftHasUserContent,
+  type ComposerThreadDraftState,
   type ComposerFileAttachment,
   type ComposerImageAttachment,
   type DraftThreadEnvMode,
@@ -153,6 +158,29 @@ import type { useUsageLimitsPanel } from "./useUsageLimitsPanel";
 import type { useWorktreeSetup } from "./useWorktreeSetup";
 
 const ENVIRONMENT_UNAVAILABLE_SEND_TOAST_TRAIL_SIZE = 3;
+
+// Kept across a visit to provider settings. Only the same draft, destination, and content
+// can consume the original Send. Restarting the desktop leaves a normal editable draft.
+const waitingForVmProvider = new Map<
+  DraftId,
+  {
+    environmentId: EnvironmentId;
+    content: ComposerThreadDraftState | null;
+    models: ReadonlyArray<ModelSelection> | null;
+    args: [
+      undefined,
+      ComposerDispatchMode | undefined,
+      ComposerSubmissionIntent | undefined,
+      (
+        | {
+            annotation: PreviewAnnotationPayload;
+            image: ComposerImageAttachment | null;
+          }
+        | undefined
+      ),
+    ];
+  }
+>();
 
 function readEnvironmentPresentation(environmentId: EnvironmentId) {
   return appAtomRegistry.get(environmentPresentations.presentationsAtom).get(environmentId);
@@ -373,6 +401,7 @@ export function useComposerSend(input: ComposerSendInput) {
   const linkedEnvironments = useLinkedEnvironments(environmentId);
   const handleNewThread = useNewThreadHandler();
   const navigate = useNavigate();
+  const router = useRouter();
   const clientSettingsHydrated = useClientSettingsHydrated();
   const startThreadTurn = useOrchestrationCommand(threadEnvironment.startTurn, {
     reportFailure: false,
@@ -1008,7 +1037,9 @@ export function useComposerSend(input: ComposerSendInput) {
     const outgoingMessageContext = buildOutgoingMessageContext(
       composerAttachmentsSnapshot.map((attachment) => attachment.id),
     );
-    const messageIdForSend = newMessageId();
+    const localVmBootstrap =
+      isLocalDraftThread && draftId && String(activeProject?.id) === String(draftId);
+    const messageIdForSend = localVmBootstrap ? MessageId.make(draftId) : newMessageId();
     const messageCreatedAt = new Date().toISOString();
     const outgoingMessageText = formatOutgoingPrompt({
       provider: ctxSelectedProvider,
@@ -1481,6 +1512,7 @@ export function useComposerSend(input: ComposerSendInput) {
         environmentId,
         input: {
           threadId: threadIdForSend,
+          ...(localVmBootstrap ? { commandId: CommandId.make(draftId) } : {}),
           message: {
             messageId: messageIdForSend,
             role: "user",
@@ -1692,8 +1724,171 @@ export function useComposerSend(input: ComposerSendInput) {
   };
 
   const onSendLatest = useStableCallback(onSend);
+  const readSendTarget = useStableCallback(() => ({ draftId, environmentId }));
+  const sendWhenVmProviderReady = useStableCallback(() => {
+    if (
+      !draftId ||
+      router.state.location.pathname !== `/draft/${draftId}` ||
+      sendInFlightRef.current ||
+      threadDetailLoading ||
+      !clientSettingsHydrated ||
+      !readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)
+    )
+      return false;
+    const pending = waitingForVmProvider.get(draftId);
+    if (!pending || pending.environmentId !== environmentId) return false;
+    const content = useComposerDraftStore.getState().getComposerDraft(draftId);
+    if (composerDraftContentChanged(content, pending.content) || !isLocalDraftThread) {
+      waitingForVmProvider.delete(draftId);
+      return false;
+    }
+    const ctx = composerRef.current?.getSendContext();
+    const providers = appAtomRegistry
+      .get(environmentPresentations.providersByEnvironmentAtom)
+      .get(environmentId);
+    const selections = ctx?.multipleModelSelections ?? (ctx ? [ctx.selectedModelSelection] : []);
+    if (
+      !ctx?.providerAvailable ||
+      !selections.length ||
+      (pending.models !== null &&
+        (pending.models.length !== selections.length ||
+          !pending.models.every(
+            (model, index) =>
+              model.instanceId === selections[index]?.instanceId &&
+              model.model === selections[index]?.model,
+          ))) ||
+      !selections.every((selection) => {
+        const provider = providers?.find((entry) => entry.instanceId === selection.instanceId);
+        return (
+          provider?.installed &&
+          provider.enabled &&
+          provider.auth.status !== "unauthenticated" &&
+          provider.status !== "error" &&
+          provider.status !== "disabled"
+        );
+      })
+    )
+      return false;
+    waitingForVmProvider.delete(draftId);
+    void onSendLatest(...pending.args);
+    return true;
+  });
+  const isVmDraft = Boolean(
+    isLocalDraftThread && draftId && activeProject && String(activeProject.id) === draftId,
+  );
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- a first Send waiting for guest sign-in resumes when its provider becomes ready or the draft reopens.
+  useEffect(() => {
+    if (!draftId || !isVmDraft || threadDetailLoading || !clientSettingsHydrated) return;
+    sendWhenVmProviderReady();
+    const unsubscribeProviders = appAtomRegistry.subscribe(
+      environmentPresentations.providersByEnvironmentAtom,
+      () => {
+        // Let the composer commit its new model selection before reading its handle.
+        queueMicrotask(sendWhenVmProviderReady);
+      },
+    );
+    const unsubscribeRoute = router.subscribe("onResolved", () =>
+      queueMicrotask(sendWhenVmProviderReady),
+    );
+    return () => {
+      unsubscribeProviders();
+      unsubscribeRoute();
+    };
+  }, [
+    draftId,
+    isVmDraft,
+    threadDetailLoading,
+    clientSettingsHydrated,
+    router,
+    sendWhenVmProviderReady,
+  ]);
+
   const onSendWithRouting = async (...args: Parameters<typeof onSend>) => {
     args[0]?.preventDefault();
+    if (draftThread?.environmentSelection === "local-vm") {
+      if (
+        !draftId ||
+        !activeProject ||
+        !isLocalDraftThread ||
+        sendInFlightRef.current ||
+        (!args[3] && !promptRef.current.trim() && !draftHasNonPromptContent(composerDraftTarget))
+      )
+        return;
+      const atSend = composerRef.current?.getSendContext();
+      const sourceDraft = useComposerDraftStore.getState().getComposerDraft(draftId);
+      const models =
+        atSend?.multipleModelSelections ??
+        (hasExplicitComposerModelSelection(sourceDraft) && atSend
+          ? [atSend.selectedModelSelection]
+          : null);
+      sendInFlightRef.current = true;
+      const branch = draftThread.branch;
+      const destination = await prepareLocalVmDraft({
+        draftId,
+        sourceEnvironmentId: environmentId,
+        title: activeProject.title,
+        sourceCwd: activeProjectIsScratch
+          ? null
+          : (draftThread.worktreePath ?? activeProject.workspaceRoot),
+        revision:
+          branch && startFromOrigin && !branch.startsWith("origin/") ? `origin/${branch}` : branch,
+        stillOnDraft: () =>
+          currentRouteThreadKeyRef.current === routeThreadKey &&
+          readSendTarget().draftId === draftId,
+      })
+        .catch((cause: unknown) => {
+          toastManager.add({
+            type: "error",
+            title: m(msg("Could not prepare local VM")),
+            description: cause instanceof Error ? cause.message : String(cause),
+          });
+          return null;
+        })
+        .finally(() => {
+          sendInFlightRef.current = false;
+        });
+      if (
+        destination === null ||
+        readSendTarget().environmentId !== destination ||
+        readSendTarget().draftId !== draftId
+      )
+        return;
+      waitingForVmProvider.set(draftId, {
+        environmentId: destination,
+        models,
+        content: useComposerDraftStore.getState().getComposerDraft(draftId),
+        args: [undefined, args[1], args[2], args[3]],
+      });
+      if (!sendWhenVmProviderReady()) {
+        const target = destination;
+        const providers = appAtomRegistry
+          .get(environmentPresentations.providersByEnvironmentAtom)
+          .get(target);
+        const instanceId =
+          providers?.find(
+            (provider) => provider.instanceId === atSend?.selectedModelSelection.instanceId,
+          )?.instanceId ??
+          providers?.find((provider) => provider.driver === atSend?.selectedProvider)?.instanceId;
+        toastManager.add({
+          type: "info",
+          title: m(msg("Set up a provider in the local VM")),
+          description: m(
+            msg("Your first message is saved. Return to this draft after setup to send it."),
+          ),
+          actionProps: {
+            children: m(msg("Open providers")),
+            onClick: () => {
+              void navigate({
+                to: "/settings/providers",
+                search: { environmentId: target, ...(instanceId ? { instanceId } : {}) },
+              });
+            },
+          },
+        });
+      }
+      return;
+    }
+    if (draftId) waitingForVmProvider.delete(draftId);
     const refresh =
       args[3] || sendInFlightRef.current || readPendingEnvironmentChange() !== null
         ? null

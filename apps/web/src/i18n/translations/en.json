@@ -1593,6 +1593,7 @@
   "890241f6fe076db8": "Failed to copy path",
   "8fbc792d713668c1": "Each model starts in its own worktree.",
   "97405c12100cb246": "Run on",
+  "0c4e2a9f5d725386": "New local VM",
   "44ad5a6f7fd4f644": "Run context: {context}",
   "25ae6917f8121f5d": "Auto balance",
   "0835c108d19201de": "Run on",
@@ -2885,6 +2886,21 @@
   "521c00203391d6c1": "This commit is not in the thread's workspace",
   "9f1b29c948772f0f": "Open link",
   "6239ea7de7a7ae0a": "Unable to open pull request link",
+  "7016e03cb88f387f": "Select a project on this Mac to start a local VM.",
+  "5a0a0613d046925d": "Starting local VM",
+  "ad88afc3bf47b055": "Preparing a checkout of the selected Git commit.",
+  "23d29822edf10020": "Preparing an empty workspace.",
+  "ff8757a07981b608": "Could not stop local VM",
+  "8e20fd74a418e766": "Connecting to local VM",
+  "6d85466f7790ad42": "Local VM · {title} · {id}",
+  "72e9162b9c6c440e": "Connect local VM",
+  "b0d83cbbd982bc11": "The guest did not establish an authorized T3 connection. Retry to reconnect.",
+  "6ef0b4bad6919264": "Open project in local VM",
+  "4be98a150e643b4a": "Project tools need attention",
+  "ba355026d492c0d2": "Could not install {providers} in the VM",
+  "cfc7e1d2df8159ce": "Open Settings → Providers for this VM to retry installation.",
+  "865bcbd4d1e35d22": "Local VM ready",
+  "88e2b8b5b8bacfd9": "Your draft changed during setup. Review it and send when ready.",
   "c8440b29bc95ca71": "Invalid keybinding.",
   "f9e2c203389660f8": "No environment is selected.",
   "372f4d4a1c650763": "This connection cannot restart the resource monitor.",
@@ -4022,6 +4038,16 @@
     }
   ],
   "e58a1d884fa1d8f2": "Thread details",
+  "43c5fbd02c6f330a": "Show less",
+  "de45b075b016cb14": [
+    "Show ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " more"
+  ],
   "02d9667ff2c8e0b8": "Issue {key}: {title}",
   "4276743ee60a3c62": "{count, plural, one {{count} comment} other {{count} comments}}",
   "42f634397f3960aa": "Show in thread details",
@@ -4061,16 +4087,6 @@
   ],
   "159ddd0d146a0f22": "Watching: the agent wakes when checks finish, someone comments, or the branch conflicts. Click to stop.",
   "1cbc8b5db51b4c77": "Merge",
-  "43c5fbd02c6f330a": "Show less",
-  "de45b075b016cb14": [
-    "Show ",
-    {
-      "i": 1,
-      "k": "_gt_value_1",
-      "v": "v"
-    },
-    " more"
-  ],
   "a3d040c4ef4fc6e9": "Ahead of pace",
   "b16fdf56b16d99c9": "On pace",
   "90f977e97ae8b6c6": "Under pace",
@@ -4085,6 +4101,7 @@
   "66be4fb43249bbd2": "{used} of {max} tokens",
   "ee3ae58c8b38a425": "{left}% left",
   "ebb26f93fb83a71b": "{label}: {left}% left",
+  "1b16346722b65812": "{timeLeft}% of the window left",
   "728c6cc1431e76c8": "Resets in {duration} · {time}",
   "e16b0b9b490c8bc7": "{label}: {value}",
   "ba67d0a9ff5dabf0": "Clipboard API is unavailable while copying admin request.",
@@ -4674,6 +4691,10 @@
   "06cdf54d45b0a187": "Background task failed",
   "d769a69cec09af0b": "Could not start thread",
   "4c13b543b99e5fac": "Open draft",
+  "8ffb279a629c5429": "Could not prepare local VM",
+  "09c2ae92c0ac7169": "Set up a provider in the local VM",
+  "9e9330c8fa52531c": "Your first message is saved. Return to this draft after setup to send it.",
+  "a3a558246e0aa430": "Open providers",
   "850da199488a3ccb": "Stashed machines can't go in an answer",
   "2f011c299e8b8542": "Restore this prompt after the agent's question is answered.",
   "93e1adec217df51c": "Stashed files belong to another environment",
@@ -5989,10 +6010,6 @@
   "c747696796f64468": "T3 Connect is on, but the app cannot reach this computer.",
   "96557a906f6167b9": "Signed in. Share this computer so the app can reach it.",
   "a8c7bd8349214c14": "Could not save Codex setup",
-  "4c180d45134b7da4": "Review the command, then press Enter to run it.",
-  "728b7fa1184ea9c8": "Could not open the setup terminal.",
-  "8769d29d8434e535": "Preparing command...",
-  "f3889aa139ecefa7": "Install {agent}",
   "b79e42281b0acc9e": "{count, plural, one {Imported {count} thread.} other {Imported {count} threads.}}",
   "686dd0744640be73": "{count, plural, one {{count} thread could not be imported.} other {{count} threads could not be imported.}}",
   "ce247a620407cec4": "{count, plural, one {Imported {count} thread. Some thread history could not be imported.} other {Imported {count} threads. Some thread history could not be imported.}}",
@@ -6077,21 +6094,6 @@
   "b625d6ba3be34a56": "Sign in to T3 Connect here, then in the app with the same account.",
   "2eb756ce7da7d95d": "Ready",
   "fc05a3512bf05489": "Checking…",
-  "cade8b9f59f4b690": [
-    "Run",
-    " ",
-    {
-      "t": "code",
-      "i": 1,
-      "c": {
-        "i": 2,
-        "k": "_gt_value_2",
-        "v": "v"
-      }
-    },
-    " ",
-    "in this terminal."
-  ],
   "9d9b9624c7bd95df": "Other folders",
   "1eb8f3d4695033fb": [
     "Added to ",
@@ -8678,6 +8680,42 @@
   "06ed78c51947fdb7": "T3 Code will restart and start running a server on this computer again.",
   "5741e027bc5d5e4c": "Restart and turn off",
   "e09686bd65886c10": "Restart and turn on",
+  "5d9cea48ac841200": "Claude account",
+  "c54508bcabbb81cc": "Enable this provider to set it up in the VM.",
+  "556615b6147451b4": "Connected through your Mac subscription.",
+  "53c0980f793ad392": "Check subscription sharing in Settings → Environments → Local VMs on your Mac.",
+  "1e041f41872ef998": "Signed in on this VM.",
+  "09d09790b93bc793": "Terminal access is required to set up this provider in the VM.",
+  "bfca54587dca65b7": "Open a terminal in this VM to connect your account.",
+  "76c63dc262165940": "Sign in on VM",
+  "9b4f63b069089777": "Install on VM",
+  "a133b133ba39c012": "Permanently delete the local VM for {title}? This removes its disk, conversation history, and unexported work.",
+  "66dd68a31a158d46": "Local VM operation failed",
+  "6a1760294d9d51f3": "Local VMs",
+  "0f1392bed2c4985c": "Use my Mac subscriptions",
+  "6fb240a980fac03d": "Use your Mac’s ChatGPT sign-in and Claude setup token in T3’s local VMs. Keep this app open while using them.",
+  "f46850a0efc266b2": "Claude setup token",
+  "8286681e120ea9fe": "Saved in your Mac Keychain. Replace it here when it expires.",
+  "6b15b1d2abeea85d": "Replace token",
+  "02ea19bd05e02fc9": "Save token",
+  "c0880972863c3a2b": "Mac Git connected",
+  "dcd78fba3b8987a9": "Mac subscriptions connected",
+  "5b9b5e0318850ed0": "Use Mac Git for the project in {title}",
+  "614e5ad58a795fb5": "Stop",
+  "4cbc7c43dd33c363": "Resume",
+  "80b4c23536e1ca8d": [
+    "Run ",
+    {
+      "t": "code",
+      "i": 1,
+      "c": "claude setup-token"
+    },
+    " in Terminal on this Mac, then save the token here once for all local VMs."
+  ],
+  "111a44209dc6e701": "Remove",
+  "6bc82694ee1b3f7b": "Retry connection",
+  "ceb2bc36c3202366": "Use Mac Git for this project",
+  "aba29e77e52bca46": "Delete",
   "b8c82ba62b34f0e4": "Microphones, preferred first",
   "9fe08946d6dbd618": "Saved microphone",
   "8101bb8e3c7427bf": "Move {name} up",
@@ -8951,6 +8989,25 @@
   ],
   "a11d2816a2b3106c": "Loading sign-in terminal…",
   "b2f7638eb3def111": "If the final localhost page does not load, paste its full URL here.",
+  "4c180d45134b7da4": "Review the command, then press Enter to run it.",
+  "728b7fa1184ea9c8": "Could not open the setup terminal.",
+  "8769d29d8434e535": "Preparing command...",
+  "b80c344765180a69": "Claude Code setup",
+  "cade8b9f59f4b690": [
+    "Run",
+    " ",
+    {
+      "t": "code",
+      "i": 1,
+      "c": {
+        "i": 2,
+        "k": "_gt_value_2",
+        "v": "v"
+      }
+    },
+    " ",
+    "in this terminal."
+  ],
   "c749e91a6fec5cf9": "Clear {field}",
   "95e568730bdde867": "Variables",
   "134c2eb478dce8d9": "API keys, base URLs, and other per-instance CLI settings.",
@@ -9616,7 +9673,6 @@
   ],
   "13d4f258e93f1dc1": "Connect an environment to manage the secret providers its provider variables read from.",
   "88466f5a03be2419": "Environment-wide setting. Select an environment to change it.",
-  "111a44209dc6e701": "Remove",
   "a3538ba5ca802bd7": [
     "Remove ",
     {
@@ -11868,7 +11924,6 @@
   "0bd938825ffcf992": "+{percent}% of pool",
   "09c0e00d7fb55402": "Using reset credit…",
   "4df3ff1be768a7ab": "{name}: {remaining}% left",
-  "1b16346722b65812": "{timeLeft}% of the window left",
   "7aaaff1c6484f25c": "Segment",
   "8bcab2ef61de6518": "$0 cap",
   "a16b48709357a5a7": "Manage usage",
