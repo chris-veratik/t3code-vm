@@ -66,6 +66,7 @@ export const SET_CONNECTION_CATALOG_CHANNEL = "desktop:set-connection-catalog";
 export const GET_LOCAL_VM_SUBSCRIPTIONS_CHANNEL = "desktop:get-local-vm-subscriptions";
 export const UPDATE_LOCAL_VM_SUBSCRIPTIONS_CHANNEL = "desktop:update-local-vm-subscriptions";
 export const PREPARE_LOCAL_VM_CHANNEL = "desktop:prepare-local-vm";
+export const LOCAL_VM_PREPARATION_EVENT_CHANNEL = "desktop:local-vm-preparation-event";
 export const LIST_LOCAL_VMS_CHANNEL = "desktop:list-local-vms";
 export const MANAGE_LOCAL_VM_CHANNEL = "desktop:manage-local-vm";
 export const DISCOVER_SSH_HOSTS_CHANNEL = "desktop:discover-ssh-hosts";

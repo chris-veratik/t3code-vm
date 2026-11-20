@@ -404,6 +404,15 @@ export const LocalVmLaunchSchema = Schema.Struct({
   revision: Schema.NullOr(TrimmedNonEmptyString),
 });
 export type LocalVmLaunch = typeof LocalVmLaunchSchema.Type;
+export type LocalVmPreparationPhase =
+  | "booting"
+  | "installing-guest-tools"
+  | "preparing-checkout"
+  | "installing-project-tools";
+export interface LocalVmPreparationEvent {
+  readonly id: LocalVmLaunch["id"];
+  readonly phase: LocalVmPreparationPhase;
+}
 export const LocalVmInfoSchema = Schema.Struct({
   projectGit: Schema.optionalKey(
     Schema.Struct({
@@ -1162,6 +1171,7 @@ export interface DesktopBridge {
     action: LocalVmSubscriptionAction,
   ) => Promise<LocalVmSubscriptionState>;
   prepareLocalVm?: (launch: LocalVmLaunch) => Promise<typeof LocalVmWorkspaceSchema.Type>;
+  onLocalVmPreparation?: (listener: (event: LocalVmPreparationEvent) => void) => () => void;
   listLocalVms?: () => Promise<ReadonlyArray<typeof LocalVmInfoSchema.Type>>;
   manageLocalVm?: (input: typeof LocalVmActionSchema.Type) => Promise<void>;
   discoverSshHosts: () => Promise<readonly DesktopDiscoveredSshHost[]>;

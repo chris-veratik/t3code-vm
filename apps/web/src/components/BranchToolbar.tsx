@@ -5,7 +5,6 @@ import {
   writeTextToClipboard,
 } from "../hooks/useCopyToClipboard";
 import * as Schema from "effect/Schema";
-import { usePrimaryEnvironmentId } from "../state/environments";
 import { formatFilePathForClipboard } from "@t3tools/client-runtime/media-actions";
 import { readLocalApi } from "../localApi";
 import { stackedThreadToast, toastManager } from "./ui/toast";
@@ -107,6 +106,7 @@ interface BranchToolbarProps {
   onStartFromOriginChange: (startFromOrigin: boolean) => void;
   autoEnvironmentLabel?: string | undefined;
   onAutoEnvironment?: (() => void) | undefined;
+  onLocalVm?: (() => void) | undefined;
   envLocked: boolean;
   onCheckoutPullRequestRequest?: (reference: string) => void;
   onComposerFocusRequest?: () => void;
@@ -659,6 +659,7 @@ export const BranchToolbar = memo(function BranchToolbar({
   onStartFromOriginChange,
   autoEnvironmentLabel,
   onAutoEnvironment,
+  onLocalVm,
   envLocked,
   onCheckoutPullRequestRequest,
   onComposerFocusRequest,
@@ -718,22 +719,9 @@ export const BranchToolbar = memo(function BranchToolbar({
     ],
   );
 
-  const primaryEnvironmentId = usePrimaryEnvironmentId();
   const localVmSelected = useComposerDraftStore((store) =>
     draftId ? store.getDraftSession(draftId)?.environmentSelection === "local-vm" : false,
   );
-  const onLocalVm =
-    draftId &&
-    !envLocked &&
-    !isServerThread &&
-    environmentId === primaryEnvironmentId &&
-    window.desktopBridge?.prepareLocalVm
-      ? () =>
-          setDraftThreadContext(draftId, {
-            environmentSelection: "local-vm",
-            loadBalancedEnvironmentId: null,
-          })
-      : undefined;
   const addTargets = useAddProjectTargets(activeProject, availableEnvironments);
   const onAddToMachine = (targetEnvironmentId: EnvironmentId | null) =>
     openAddProjectToMachine({ projectRef: activeProjectRef, targetEnvironmentId });

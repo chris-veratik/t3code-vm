@@ -1,20 +1,80 @@
 import { useEffect, useState } from "react";
+import { useAtomValue } from "@effect/atom-react";
 import { T, useGT } from "gt-react";
+import { isListedThreadLineage, type EnvironmentId } from "@t3tools/contracts";
 import type {
   LocalVmInfoSchema,
   LocalVmActionSchema,
   LocalVmSubscriptionAction,
   LocalVmSubscriptionState,
+  OrchestrationV2ThreadShell,
 } from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import { AsyncResult, Atom } from "effect/reactivity";
+import { Persistence } from "@t3tools/client-runtime/platform";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import { environmentCatalog } from "../../connection/catalog";
+import { connectionAtomRuntime } from "../../connection/runtime";
 import { readEnvironment } from "../../state/environments";
+import { orchestrationEnvironment } from "../../state/orchestration";
+import { environmentShell } from "../../state/shell";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { readLocalApi } from "../../localApi";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { toastManager } from "../ui/toast";
 import { SettingsSection, SettingsRow } from "./settingsLayout";
+
+const cachedVmShellAtom = Atom.family((environmentId: EnvironmentId) =>
+  connectionAtomRuntime.atom(
+    Effect.flatMap(Persistence.EnvironmentCacheStore, (cache) => cache.loadShell(environmentId)),
+  ),
+);
+
+const latestVmThreadTitleAtom = Atom.family((environmentId: EnvironmentId | null) =>
+  Atom.make((get) => {
+    if (environmentId === null) return null;
+    const shell = get(environmentShell.stateValueAtom(environmentId));
+    const snapshot =
+      Option.getOrNull(shell.snapshot) ??
+      Option.getOrNull(AsyncResult.getOrElse(get(cachedVmShellAtom(environmentId)), Option.none));
+    const archive =
+      shell.status === "live"
+        ? AsyncResult.getOrElse(
+            get(orchestrationEnvironment.archivedShellSnapshot({ environmentId, input: {} })),
+            () => null,
+          )
+        : null;
+    let latest: OrchestrationV2ThreadShell | undefined;
+    for (const threads of [snapshot?.threads, archive?.threads ?? snapshot?.archivedThreads]) {
+      for (const thread of threads ?? []) {
+        if (!thread.title.trim() || !isListedThreadLineage(thread.lineage)) continue;
+        const created = DateTime.toEpochMillis(thread.createdAt);
+        const latestCreated = latest ? DateTime.toEpochMillis(latest.createdAt) : -Infinity;
+        if (
+          !latest ||
+          created > latestCreated ||
+          (created === latestCreated && thread.id > latest.id)
+        ) {
+          latest = thread;
+        }
+      }
+    }
+    return latest?.title ?? null;
+  }),
+);
+
+function LocalVmTitle({ vm }: { vm: typeof LocalVmInfoSchema.Type }) {
+  const latest = useAtomValue(latestVmThreadTitleAtom(vm.environmentId));
+  return (
+    <span className="wrap-anywhere">
+      {vm.title}
+      {latest && <span className="font-normal text-muted-foreground"> · {latest}</span>}
+    </span>
+  );
+}
 
 export function LocalVmSettings() {
   const gt = useGT();
@@ -195,7 +255,7 @@ export function LocalVmSettings() {
       {machines.map((vm) => (
         <SettingsRow
           key={vm.id}
-          title={vm.title}
+          title={<LocalVmTitle vm={vm} />}
           description={[
             vm.id.slice(0, 8),
             vm.status,

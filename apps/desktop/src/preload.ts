@@ -7,6 +7,7 @@ import type {
   DesktopPreviewRecordingInputEvent,
   DesktopPreviewTabState,
   DesktopSnapShotEvent,
+  LocalVmPreparationEvent,
 } from "@t3tools/contracts";
 import { exposeClerkBridge } from "@clerk/electron/preload";
 import { contextBridge, ipcRenderer, webFrame, webUtils } from "electron";
@@ -190,6 +191,13 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     ? {
         prepareLocalVm: (launch: Parameters<NonNullable<DesktopBridge["prepareLocalVm"]>>[0]) =>
           ipcRenderer.invoke(IpcChannels.PREPARE_LOCAL_VM_CHANNEL, launch),
+        onLocalVmPreparation: (listener: (event: LocalVmPreparationEvent) => void) => {
+          const wrapped = (_event: Electron.IpcRendererEvent, progress: LocalVmPreparationEvent) =>
+            listener(progress);
+          ipcRenderer.on(IpcChannels.LOCAL_VM_PREPARATION_EVENT_CHANNEL, wrapped);
+          return () =>
+            ipcRenderer.removeListener(IpcChannels.LOCAL_VM_PREPARATION_EVENT_CHANNEL, wrapped);
+        },
         getLocalVmSubscriptions: () =>
           ipcRenderer.invoke(IpcChannels.GET_LOCAL_VM_SUBSCRIPTIONS_CHANNEL),
         updateLocalVmSubscriptions: (

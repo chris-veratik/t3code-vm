@@ -162,6 +162,14 @@ function RoutingProbe({ input, onPrepared }: HarnessProps) {
           Switch to {environmentId}
         </button>
       ))}
+      <button
+        onClick={() => {
+          const host = input.logicalProjectEnvironments.find((option) => option.isPrimary);
+          if (host) routing.onEnvironmentChangeStable(host.environmentId, "local-vm");
+        }}
+      >
+        New local VM
+      </button>
       <span>{draft?.environmentId}</span>
       <button
         onClick={async () => {
@@ -309,6 +317,47 @@ it("keeps the selected models when the draft switches machine by hand", async ()
   await screen.getByRole("button", { name: `Switch to ${a}` }).click();
   await expect.element(screen.getByText(a)).toBeInTheDocument();
   await expect.element(screen.getByText("gpt-6.1-sol", { exact: true })).toBeInTheDocument();
+});
+
+it("chooses a fresh VM from the Mac checkout when the draft starts on an existing VM", async () => {
+  const { a, b, draftId, input, store } = fanoutSetup();
+  const guestProjectId = ProjectId.make("guest-project");
+  const logicalProjectEnvironments = input.logicalProjectEnvironments.map((option) =>
+    option.environmentId === b ? { ...option, projectId: guestProjectId } : option,
+  );
+  resources.projects = resources.projects.map((project) =>
+    project.environmentId === b
+      ? { ...project, id: guestProjectId, workspaceRoot: "/home/guest/project" }
+      : project,
+  );
+  store.setDraftThreadContext(draftId, {
+    projectRef: scopeProjectRef(b, guestProjectId),
+    branch: "workspace",
+    worktreePath: "/home/guest/worktree",
+    startFromOrigin: true,
+  });
+  await using screen = await render(
+    <Harness
+      input={{
+        ...input,
+        automaticEnvironment: false,
+        draftThread: store.getDraftSession(draftId),
+        logicalProjectEnvironments,
+      }}
+    />,
+  );
+  await screen.getByRole("button", { name: "New local VM" }).click();
+  expect(store.getDraftSession(draftId)).toMatchObject({
+    environmentId: a,
+    projectId: input.draftThread!.projectId,
+    environmentSelection: "local-vm",
+    loadBalancedEnvironmentId: null,
+    branch: null,
+    worktreePath: null,
+    envMode: "local",
+    startFromOrigin: false,
+  });
+  expect(store.getComposerDraft(draftId)?.prompt).toBe("Keep this prompt");
 });
 
 it("keeps the selected models when automatic routing picks another machine", async () => {

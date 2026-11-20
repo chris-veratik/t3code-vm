@@ -7,6 +7,7 @@ import {
   LocalVmWorkspaceSchema,
 } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import { webContents } from "electron";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Lima from "../../local-vm/lima.ts";
@@ -34,7 +35,15 @@ export const prepareLocalVm = makeIpcMethod({
   channel: Channels.PREPARE_LOCAL_VM_CHANNEL,
   payload: LocalVmLaunchSchema,
   result: LocalVmWorkspaceSchema,
-  handler: (input) => run(() => Lima.prepareLocalVm(input)),
+  handler: (input, event) =>
+    run(() => {
+      const contents = event ? webContents.fromId(event.sender.id) : undefined;
+      return Lima.prepareLocalVm(input, (phase) => {
+        if (contents && !contents.isDestroyed()) {
+          contents.send(Channels.LOCAL_VM_PREPARATION_EVENT_CHANNEL, { id: input.id, phase });
+        }
+      });
+    }),
 });
 export const listLocalVms = makeIpcMethod({
   channel: Channels.LIST_LOCAL_VMS_CHANNEL,

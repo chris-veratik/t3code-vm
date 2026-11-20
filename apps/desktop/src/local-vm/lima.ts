@@ -4,7 +4,12 @@ import * as NodeFSP from "node:fs/promises";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NodeUtil from "node:util";
-import { EnvironmentId, type LocalVmLaunch, type LocalVmActionSchema } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  type LocalVmLaunch,
+  type LocalVmActionSchema,
+  type LocalVmPreparationPhase,
+} from "@t3tools/contracts";
 import { localVmHome } from "@t3tools/ssh/localVm";
 import {
   openProjectGit,
@@ -242,9 +247,15 @@ async function startMachine(id: string, signal?: AbortSignal) {
   return { name, alias, guest };
 }
 
-async function prepare(input: LocalVmLaunch, signal: AbortSignal) {
+async function prepare(
+  input: LocalVmLaunch,
+  signal: AbortSignal,
+  onPhase: (phase: LocalVmPreparationPhase) => void,
+) {
   const record = await recordLaunch(input);
+  onPhase("booting");
   const { name, alias, guest } = await startMachine(input.id, signal);
+  onPhase("installing-guest-tools");
   await guest(["sh", "-c", installGuestTools]);
   const installs = await Promise.allSettled(
     localVmProviders.map((provider) => guest(["sh", "-c", installLocalVmProvider, "sh", provider])),
@@ -271,6 +282,7 @@ async function prepare(input: LocalVmLaunch, signal: AbortSignal) {
     environmentId,
     status: "Running",
   });
+  onPhase("preparing-checkout");
   const workspace = home + "/.t3/local-vm-workspace";
   if (
     (await guest([
@@ -337,6 +349,7 @@ rm -f "$HOME/.t3/source.bundle"`,
   }
   let projectToolsWarning: string | undefined;
   if (record.root && record.commit) {
+    onPhase("installing-project-tools");
     try {
       await guest([
         "/usr/bin/python3",
@@ -379,7 +392,10 @@ function serialize<T>(id: string, run: () => Promise<T>) {
   });
 }
 
-export function prepareLocalVm(input: LocalVmLaunch) {
+export function prepareLocalVm(
+  input: LocalVmLaunch,
+  onPhase: (phase: LocalVmPreparationPhase) => void = () => {},
+) {
   const active = launches.get(input.id);
   if (active) {
     if (active.input.cwd !== input.cwd || active.input.revision !== input.revision) {
@@ -388,7 +404,7 @@ export function prepareLocalVm(input: LocalVmLaunch) {
     return active.task;
   }
   const controller = new AbortController();
-  const task = serialize(input.id, () => prepare(input, controller.signal)).finally(() =>
+  const task = serialize(input.id, () => prepare(input, controller.signal, onPhase)).finally(() =>
     launches.delete(input.id),
   );
   launches.set(input.id, { input, controller, task });

@@ -1,7 +1,13 @@
 import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import { runAtomCommand, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
-import { AuthOrchestrationOperateScope, ProjectId, type EnvironmentId } from "@t3tools/contracts";
+import {
+  AuthOrchestrationOperateScope,
+  ProjectId,
+  type EnvironmentId,
+  type LocalVmPreparationPhase,
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
+import { Atom } from "effect/reactivity";
 import { msg } from "gt-react";
 import { getActiveLocale, m } from "~/i18n/messages";
 import { environmentCatalog } from "../connection/catalog";
@@ -19,6 +25,20 @@ import { toastManager } from "../components/ui/toast";
 import { composerDraftContentChanged } from "../components/chat/composerSend.logic";
 import { seedDraftModelSelection } from "./seedDraftModelSelection";
 
+export interface LocalVmDraftPreparation {
+  readonly phase: LocalVmPreparationPhase | "starting" | "connecting" | "stopping";
+  readonly hasProject: boolean;
+  readonly cancel: () => void;
+}
+
+const preparationsAtom = Atom.make<ReadonlyMap<DraftId, LocalVmDraftPreparation>>(new Map()).pipe(
+  Atom.keepAlive,
+);
+
+export const localVmDraftPreparationAtom = Atom.family((draftId: DraftId | null) =>
+  Atom.make((get) => (draftId === null ? null : (get(preparationsAtom).get(draftId) ?? null))),
+);
+
 export async function prepareLocalVmDraft(input: {
   draftId: DraftId;
   sourceEnvironmentId: EnvironmentId;
@@ -31,14 +51,15 @@ export async function prepareLocalVmDraft(input: {
   const bridge = window.desktopBridge;
   if (!bridge?.prepareLocalVm || readPrimaryEnvironmentId() !== sourceEnvironmentId)
     throw new Error(m(msg("Select a project on this Mac to start a local VM.")));
+  if (appAtomRegistry.get(preparationsAtom).has(draftId)) return null;
   const drafts = useComposerDraftStore.getState();
   const original = drafts.getDraftSession(draftId);
   const composerAtSend = drafts.getComposerDraft(draftId);
-  let cancelled = false;
+  let stopping: Promise<void> | undefined;
   const pending = () => {
     const current = useComposerDraftStore.getState().getDraftSession(draftId);
     return (
-      !cancelled &&
+      stopping === undefined &&
       input.stillOnDraft() &&
       current?.environmentSelection === "local-vm" &&
       current.environmentId === sourceEnvironmentId &&
@@ -48,26 +69,27 @@ export async function prepareLocalVmDraft(input: {
       !current.promotedTo
     );
   };
-  const toast = toastManager.add({
-    type: "info",
-    title: m(msg("Starting local VM")),
-    description: input.sourceCwd
-      ? m(msg("Preparing a checkout of the selected Git commit."))
-      : m(msg("Preparing an empty workspace.")),
-    timeout: 0,
-    actionProps: {
-      children: m(msg("Cancel")),
-      onClick: () => {
-        cancelled = true;
-        void bridge.manageLocalVm?.({ id: draftId, action: "stop" }).catch((error: Error) => {
-          toastManager.add({
-            type: "error",
-            title: m(msg("Could not stop local VM")),
-            description: error.message,
-          });
+  const cancel = () => {
+    if (stopping) return;
+    stopping = Promise.resolve(bridge.manageLocalVm?.({ id: draftId, action: "stop" })).catch(
+      (error: Error) => {
+        toastManager.add({
+          type: "error",
+          title: m(msg("Could not stop local VM")),
+          description: error.message,
         });
       },
-    },
+    );
+    showPhase("stopping");
+  };
+  const showPhase = (phase: LocalVmDraftPreparation["phase"]) => {
+    appAtomRegistry.update(preparationsAtom, (previous) =>
+      new Map(previous).set(draftId, { phase, hasProject: input.sourceCwd !== null, cancel }),
+    );
+  };
+  showPhase("starting");
+  const unsubscribe = bridge.onLocalVmPreparation?.(({ id, phase }) => {
+    if (id === draftId && !stopping) showPhase(phase);
   });
   try {
     const workspace = await bridge.prepareLocalVm({
@@ -77,7 +99,7 @@ export async function prepareLocalVmDraft(input: {
       revision: input.revision,
     });
     if (!pending()) return null;
-    toastManager.update(toast, { title: m(msg("Connecting to local VM")) });
+    showPhase("connecting");
     const { environmentId } = workspace;
     const saved = readEnvironment(environmentId);
     const route = saved && Option.getOrNull(saved.entry.profile);
@@ -200,9 +222,15 @@ export async function prepareLocalVmDraft(input: {
     }
     return environmentId;
   } catch (cause) {
-    if (!cancelled) throw cause;
+    if (!stopping) throw cause;
     return null;
   } finally {
-    toastManager.close(toast);
+    unsubscribe?.();
+    if (stopping) await stopping;
+    appAtomRegistry.update(preparationsAtom, (previous) => {
+      const next = new Map(previous);
+      next.delete(draftId);
+      return next;
+    });
   }
 }

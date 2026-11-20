@@ -299,7 +299,10 @@ export function useDraftEnvironmentRouting(input: DraftEnvironmentRoutingInput) 
   } | null>(null);
   const isEnvironmentChanging = busyEnvironmentChange?.scope === environmentChangeScope;
 
-  const onEnvironmentChange = (nextEnvironmentId: EnvironmentId) => {
+  const onEnvironmentChange = (
+    nextEnvironmentId: EnvironmentId,
+    environmentSelection: "manual" | "local-vm" = "manual",
+  ) => {
     if (envLocked || !draftId || sendInFlightRef.current) return;
     const originalDraft = getDraftSession(draftId);
     if (!originalDraft || originalDraft.promotedTo) return;
@@ -307,6 +310,15 @@ export function useDraftEnvironmentRouting(input: DraftEnvironmentRoutingInput) 
       (env) => env.environmentId === nextEnvironmentId,
     );
     if (!target) return;
+    const createsVm = environmentSelection === "local-vm";
+    if (createsVm && (!target.isPrimary || target.projectId === null)) return;
+    const selection = { environmentSelection, loadBalancedEnvironmentId: null };
+    if (createsVm && originalDraft.environmentId === target.environmentId) {
+      environmentChangeRef.current = null;
+      setBusyEnvironmentChange(null);
+      setDraftThreadContext(draftId, selection);
+      return;
+    }
     const request = { environmentId: target.environmentId, scope: environmentChangeScope };
     environmentChangeRef.current = request;
     setBusyEnvironmentChange(null);
@@ -336,13 +348,13 @@ export function useDraftEnvironmentRouting(input: DraftEnvironmentRoutingInput) 
           deriveLogicalProjectKeyFromSettings(project, projectGroupingSettings),
           projectRef,
           draftId,
-          { environmentSelection: "manual", loadBalancedEnvironmentId: null },
+          selection,
         );
       } else {
         setDraftThreadContext(draftId, {
           projectRef,
-          environmentSelection: "manual",
-          loadBalancedEnvironmentId: null,
+          ...selection,
+          ...(createsVm ? { startFromOrigin: false, envMode: "local" } : {}),
         });
       }
       seedDraftModelSelection(draftId, projectRef);

@@ -384,6 +384,8 @@ import { ThreadVisitWatermark } from "./chat/ThreadVisitWatermark";
 import { ChatTerminalDrawers } from "./chat/ChatTerminalDrawers";
 import { ChatRightPanel } from "./chat/ChatRightPanel";
 import { useDraftEnvironmentRouting } from "./chat/useDraftEnvironmentRouting";
+import { localVmDraftPreparationAtom } from "../lib/prepareLocalVmDraft";
+import { LocalVmPreparationRow } from "./chat/TimelineWorkGroupRows";
 import { branchMismatchBannerItem, extensionStatusBannerItem } from "./chat/ThreadActivityBanners";
 import { ThreadNow } from "./chat/ThreadNow";
 import type { ThreadStructure } from "@t3tools/client-runtime/state/shell";
@@ -767,6 +769,7 @@ export default function ChatView(props: ChatViewProps) {
   const [scrollToEndClearance, setScrollToEndClearance] = useState(0);
   const fanoutSelectionsAtom = draftFanoutSelectionsAtom(routeThreadKey);
   const { sendInFlight: sendInFlightRef } = draftSendState(routeThreadKey);
+  const localVmPreparation = useAtomValue(localVmDraftPreparationAtom(draftId));
   const multipleModelSelections = useAtomValue(fanoutSelectionsAtom);
   const setMultipleModelSelections = (
     selections: SetStateAction<ReadonlyArray<ModelSelection> | null>,
@@ -1238,12 +1241,13 @@ export default function ChatView(props: ChatViewProps) {
     activeProject,
     activeProjectIsScratch && draftId !== null,
   );
-  const canCreateLocalVm = Boolean(
+  const localVmSource =
+    isLocalDraftThread &&
     draftId &&
     !draftThread?.promotedTo &&
-    window.desktopBridge?.prepareLocalVm &&
-    primaryEnvironment?.environmentId === activeProject?.environmentId,
-  );
+    window.desktopBridge?.prepareLocalVm
+      ? logicalProjectEnvironments.find((option) => option.isPrimary && option.projectId !== null)
+      : undefined;
   const hasMultipleEnvironments = logicalProjectEnvironments.length > 1;
   const canAutoBalanceEnvironments = hasMultipleEnvironments && !activeProjectIsScratch;
   const activeEnvironmentOption =
@@ -1252,7 +1256,7 @@ export default function ChatView(props: ChatViewProps) {
     ) ?? null;
   const showComposerEnvironmentIndicator = shouldShowEnvironmentIndicator({
     activeEnvironment: activeEnvironmentOption,
-    canPickEnvironment: hasMultipleEnvironments || canCreateLocalVm,
+    canPickEnvironment: hasMultipleEnvironments || localVmSource !== undefined,
   });
 
   const pullRequestLinking = usePullRequestLinking(environmentId);
@@ -1329,7 +1333,7 @@ export default function ChatView(props: ChatViewProps) {
   // rule out a started thread: one whose machine is offline never loads its
   // messages, so it would otherwise be offered a machine picker that does nothing.
   const canChangeEnvironment =
-    (hasMultipleEnvironments || canCreateLocalVm) &&
+    (hasMultipleEnvironments || localVmSource !== undefined) &&
     !envLocked &&
     draftId !== null &&
     !draftThread?.promotedTo;
@@ -1657,7 +1661,7 @@ export default function ChatView(props: ChatViewProps) {
     hasTimelineEntries: !timelineEmpty,
     isWorking,
     draftHeroDockRequested,
-    backgroundSubmissionPending,
+    backgroundSubmissionPending: backgroundSubmissionPending || localVmPreparation !== null,
     hasWorktreeSetupCard: worktreeSetup !== null,
   });
   const {
@@ -1874,6 +1878,10 @@ export default function ChatView(props: ChatViewProps) {
     projectGroupingSettings,
     sendInFlightRef,
   });
+  const onLocalVm =
+    canChangeEnvironment && localVmSource
+      ? () => onEnvironmentChangeStable(localVmSource.environmentId, "local-vm")
+      : undefined;
 
   const { focusComposer: focusComposerStable, scheduleComposerFocus: scheduleComposerFocusStable } =
     useComposerFocus(composerRef);
@@ -3207,12 +3215,14 @@ export default function ChatView(props: ChatViewProps) {
   // The end of the timeline holds the thread's present and next turns: what it is doing now,
   // its lifecycle status, guest messages awaiting you, then your queued messages.
   const timelineFooter =
+    localVmPreparation === null &&
     pendingHandoff === null &&
     !hasThreadNow &&
     threadStatusLine === null &&
     pendingGuestMessageCount === 0 &&
     !hasQueuedTurns ? null : (
       <>
+        {localVmPreparation && <LocalVmPreparationRow preparation={localVmPreparation} />}
         {pendingHandoff === null ? null : (
           <div className="chat-content-lane">
             <HandoffRow
@@ -3738,7 +3748,7 @@ export default function ChatView(props: ChatViewProps) {
                                 sendDisabledReason={
                                   !canOperateThread
                                     ? gt("This connection cannot change threads.")
-                                    : isEnvironmentChanging
+                                    : isEnvironmentChanging || localVmPreparation !== null
                                       ? gt("Preparing machine")
                                       : isRevertingCheckpoint
                                         ? gt("Rewinding conversation")
@@ -3888,6 +3898,7 @@ export default function ChatView(props: ChatViewProps) {
                                     ? { onEnvironmentChange: onEnvironmentChangeStable }
                                     : {})}
                                   autoEnvironmentLabel={autoEnvironmentLabel}
+                                  onLocalVm={onLocalVm}
                                   onAutoEnvironment={
                                     draftId &&
                                     !envLocked &&
@@ -3987,6 +3998,7 @@ export default function ChatView(props: ChatViewProps) {
                   envLocked={envLocked}
                   availableEnvironments={logicalProjectEnvironments}
                   autoEnvironmentLabel={autoEnvironmentLabel}
+                  onLocalVm={onLocalVm}
                   onAutoEnvironment={
                     draftId &&
                     !envLocked &&

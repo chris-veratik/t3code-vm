@@ -12,6 +12,7 @@ import { useAssetUrls } from "~/assets/assetUrls";
 import { observeResize } from "~/lib/observeResize";
 import { tickTextContent } from "~/lib/tickTextContent";
 import { observeVisibleAnimation } from "../../lib/visibleAnimation";
+import type { LocalVmDraftPreparation } from "../../lib/prepareLocalVmDraft";
 import { T, useGT, useMessages } from "gt-react";
 import { memo, use, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
@@ -472,6 +473,33 @@ export function ThinkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind:
     >
       {activity}
     </button>
+  );
+}
+
+export function LocalVmPreparationRow({ preparation }: { preparation: LocalVmDraftPreparation }) {
+  const gt = useGT();
+  const labels: Record<LocalVmDraftPreparation["phase"], string> = {
+    starting: gt("Starting local VM"),
+    booting: gt("Booting local VM"),
+    "installing-guest-tools": gt("Installing VM tools"),
+    "preparing-checkout": preparation.hasProject
+      ? gt("Preparing project checkout")
+      : gt("Preparing an empty workspace."),
+    "installing-project-tools": gt("Installing project tools"),
+    connecting: gt("Connecting to local VM"),
+    stopping: gt("Stopping local VM"),
+  };
+  return (
+    <div className="chat-content-lane flex items-center gap-2">
+      <div role="status">
+        <LiveActivityRow label={labels[preparation.phase]} active shimmer />
+      </div>
+      {preparation.phase !== "stopping" && (
+        <Button variant="ghost-muted" size="micro" onClick={preparation.cancel}>
+          <T>Cancel</T>
+        </Button>
+      )}
+    </div>
   );
 }
 
